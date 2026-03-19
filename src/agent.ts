@@ -87,6 +87,7 @@ export function agent(options: AgentOptions): AgentInstance {
       try {
         // 如果有 steps，使用 Steps 引擎
         if (options.steps?.length) {
+          stepUsages.length = 0  // 清空上次 run 的累积
           const startTime = Date.now()
           const stepResults = await runSteps(
             options.steps,

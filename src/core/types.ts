@@ -193,9 +193,12 @@ export interface TokenUsage {
   totalTokens: number
 }
 
-/** 流式事件 */
+/**
+ * 流式事件。当前仅支持 text 和 done。
+ * @future 计划支持 step_start / step_end / error / tool_call 等细粒度事件
+ */
 export interface RunEvent {
-  type: "text" | "step_start" | "step_end" | "error" | "done"
+  type: "text" | "done"
   data: any
 }
 
@@ -235,10 +238,13 @@ export interface TeamRunResult {
   duration: number
 }
 
-/** 团队流式事件 */
+/**
+ * 团队流式事件。当前仅透传 lead 的 text/done 事件，member 固定为 "lead"。
+ * @future 计划支持 delegate / member_start / member_end 等团队级事件
+ */
 export interface TeamRunEvent {
-  type: "delegate" | "member_start" | "member_end" | "text" | "error" | "done"
-  member?: string
+  type: "text" | "done"
+  member: string
   data: any
 }
 
