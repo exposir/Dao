@@ -11,114 +11,73 @@
 
 ---
 
-## 2. Provider 注册表
+## 2. 内置 Provider 支持
+
+### 开箱即用（framework dependency）
+
+| Provider | 模型字符串 | 环境变量 | 默认模型 | 依赖包 |
+|---|---|---|---|---|
+| DeepSeek | `deepseek/deepseek-chat` | `DEEPSEEK_API_KEY` | deepseek-chat | `@ai-sdk/openai`（兼容模式） |
+| OpenAI | `openai/gpt-4o` | `OPENAI_API_KEY` | gpt-4o | `@ai-sdk/openai` |
+
+> DeepSeek 通过 `@ai-sdk/openai` 的 OpenAI 兼容模式接入（baseURL 指向 `api.deepseek.com`），因此无需额外安装。
+
+### 按需安装（peerDependency，optional）
+
+| Provider | 模型字符串 | 环境变量 | 默认模型 | 安装命令 |
+|---|---|---|---|---|
+| Google | `google/gemini-2.5-pro` | `GOOGLE_GENERATIVE_AI_API_KEY` | gemini-2.5-pro | `npm i @ai-sdk/google` |
+| Anthropic | `anthropic/claude-sonnet-4-5-20250514` | `ANTHROPIC_API_KEY` | claude-sonnet-4-5-20250514 | `npm i @ai-sdk/anthropic` |
+| 月之暗面 | `moonshotai/kimi-k2.5` | `MOONSHOTAI_API_KEY` | kimi-k2.5 | `npm i @ai-sdk/moonshotai` |
+| 通义千问 | `alibaba/qwen3-max` | `ALIBABA_API_KEY` | qwen3-max | `npm i @ai-sdk/alibaba` |
+| 智谱 | `zhipu/glm-4-plus` | `ZHIPU_API_KEY` | glm-4-plus | `npm i @ai-sdk/zhipu` |
+
+### 通过 registerProvider() 接入
+
+任何支持 OpenAI 兼容 API 的模型都可以通过 `registerProvider()` + `@ai-sdk/openai` 接入：
+
+| 模型 | 方式 |
+|---|---|
+| 百度文心 | OpenAI 兼容 baseURL |
+| 零一万物 Yi | OpenAI 兼容 baseURL |
+| MiniMax | OpenAI 兼容 baseURL |
+| Ollama 本地模型 | OpenAI 兼容 baseURL |
+| Mistral | `@ai-sdk/mistral` |
+| Groq | `@ai-sdk/groq` |
+| xAI (Grok) | `@ai-sdk/xai` |
+
+---
+
+## 3. 使用方式
 
 ```typescript
-interface ProviderEntry {
-  /** provider 工厂函数 */
-  create: (apiKey: string) => LanguageModelProvider
-  /** 环境变量名 */
-  envKey: string
-  /** 默认模型 */
-  defaultModel: string
-}
+// 1. 直接指定
+const bot = agent({ model: "deepseek/deepseek-chat" })
 
-const PROVIDERS: Record<string, ProviderEntry> = {
-  // 开源模型（优先）
-  deepseek: {
-    create: (key) => createDeepSeek({ apiKey: key }),
-    envKey: "DEEPSEEK_API_KEY",
-    defaultModel: "deepseek-chat",
-  },
-  moonshotai: {
-    create: (key) => createMoonshot({ apiKey: key }),
-    envKey: "MOONSHOT_API_KEY",
-    defaultModel: "kimi-k2.5",
-  },
-  alibaba: {
-    create: (key) => createAlibaba({ apiKey: key }),
-    envKey: "ALIBABA_API_KEY",
-    defaultModel: "qwen3-max",
-  },
-  zhipu: {
-    create: (key) => createZhipu({ apiKey: key }),
-    envKey: "ZHIPU_API_KEY",
-    defaultModel: "glm-4-plus",
-  },
+// 2. 全局默认
+configure({ defaultModel: "deepseek/deepseek-chat" })
+const bot = agent({}) // 使用默认模型
 
-  // 商业模型
-  openai: {
-    create: (key) => createOpenAI({ apiKey: key }),
-    envKey: "OPENAI_API_KEY",
-    defaultModel: "gpt-4o",
-  },
-  google: {
-    create: (key) => createGoogleGenerativeAI({ apiKey: key }),
-    envKey: "GOOGLE_API_KEY",
-    defaultModel: "gemini-2.5-pro",
-  },
-  anthropic: {
-    create: (key) => createAnthropic({ apiKey: key }),
-    envKey: "ANTHROPIC_API_KEY",
-    defaultModel: "claude-sonnet-4-5",
-  },
-}
+// 3. 不指定 → 自动检测（按优先级扫描环境变量）
+// 设置 DEEPSEEK_API_KEY=sk-xxx 后：
+const bot = agent({}) // 自动使用 deepseek/deepseek-chat
 ```
 
 ---
 
-## 3. 模型解析
+## 4. 自动检测优先级
 
-```typescript
-function resolveModel(modelString: string): LanguageModel {
-  // 1. 解析 "provider/model" 格式
-  const [providerName, modelId] = modelString.split("/", 2)
+不指定 model 时，框架按以下顺序检查环境变量，使用第一个找到的：
 
-  // 2. 查找 provider
-  const provider = PROVIDERS[providerName]
-  if (!provider) {
-    throw new Error(`未知的模型 provider: ${providerName}`)
-  }
+1. `DEEPSEEK_API_KEY` → `deepseek/deepseek-chat`
+2. `OPENAI_API_KEY` → `openai/gpt-4o`
+3. `GOOGLE_GENERATIVE_AI_API_KEY` → `google/gemini-2.5-pro`
+4. `ANTHROPIC_API_KEY` → `anthropic/claude-sonnet-4-5-20250514`
+5. `MOONSHOTAI_API_KEY` → `moonshotai/kimi-k2.5`
+6. `ALIBABA_API_KEY` → `alibaba/qwen3-max`
+7. `ZHIPU_API_KEY` → `zhipu/glm-4-plus`
 
-  // 3. 读取 API Key
-  const apiKey = process.env[provider.envKey]
-  if (!apiKey) {
-    throw new Error(
-      `请设置环境变量 ${provider.envKey}。\n` +
-      `在 .env 文件中添加：${provider.envKey}=your-api-key`
-    )
-  }
-
-  // 4. 创建模型实例
-  const instance = provider.create(apiKey)
-  return instance(modelId || provider.defaultModel)
-}
-```
-
----
-
-## 4. 默认模型
-
-```typescript
-// 不指定 model 时的默认行为
-function getDefaultModel(): string {
-  // 按优先级检查环境变量
-  if (process.env.DEEPSEEK_API_KEY) return "deepseek/deepseek-chat"
-  if (process.env.MOONSHOT_API_KEY) return "moonshotai/kimi-k2.5"
-  if (process.env.ALIBABA_API_KEY) return "alibaba/qwen3-max"
-  if (process.env.OPENAI_API_KEY) return "openai/gpt-4o"
-  if (process.env.GOOGLE_API_KEY) return "google/gemini-2.5-pro"
-
-  throw new Error(
-    "未找到任何模型 API Key。\n" +
-    "请在 .env 文件中至少配置一个：\n" +
-    "  DEEPSEEK_API_KEY=sk-xxx\n" +
-    "  OPENAI_API_KEY=sk-xxx"
-  )
-}
-```
-
-> **开源模型优先**：默认模型优先检查开源模型的 API Key。
+> **开源模型优先**：DeepSeek 排第一。
 
 ---
 
@@ -126,13 +85,18 @@ function getDefaultModel(): string {
 
 ```typescript
 import { registerProvider } from "dao"
+import { createOpenAI } from "@ai-sdk/openai"
 
-// 注册百度文心（通过 OpenAI 兼容接口）
+// 注册百度文心（OpenAI 兼容模式）
 registerProvider("baidu", {
-  create: (key) => createOpenAI({
-    apiKey: key,
-    baseURL: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop",
-  }),
+  create: async (key) => {
+    const { createOpenAI } = await import("@ai-sdk/openai")
+    const provider = createOpenAI({
+      apiKey: key,
+      baseURL: "https://aip.baidubce.com/v1",
+    })
+    return (modelId) => provider.chat(modelId)
+  },
   envKey: "BAIDU_API_KEY",
   defaultModel: "ernie-4.0",
 })
@@ -141,19 +105,44 @@ registerProvider("baidu", {
 const bot = agent({ model: "baidu/ernie-4.0" })
 ```
 
+```typescript
+// 注册 Ollama 本地模型
+registerProvider("ollama", {
+  create: async (key) => {
+    const { createOpenAI } = await import("@ai-sdk/openai")
+    const provider = createOpenAI({
+      apiKey: "ollama",
+      baseURL: "http://localhost:11434/v1",
+    })
+    return (modelId) => provider.chat(modelId)
+  },
+  envKey: "OLLAMA_API_KEY", // 随意值即可
+  defaultModel: "llama3",
+})
+
+const bot = agent({ model: "ollama/llama3" })
+```
+
 ---
 
-## 6. 依赖的 Vercel AI SDK 包
+## 6. 依赖结构
 
-| 包名 | 用途 |
-|---|---|
-| `ai` | 核心（generateText, streamText） |
-| `@ai-sdk/deepseek` | DeepSeek |
-| `@ai-sdk/openai` | OpenAI + OpenAI 兼容 |
-| `@ai-sdk/google` | Gemini |
-| `@ai-sdk/anthropic` | Claude |
-| `@ai-sdk/moonshotai` | 月之暗面 Kimi |
-| `@ai-sdk/alibaba` | 通义千问 Qwen |
-| `@ai-sdk/zhipu` | 智谱 GLM |
-
-按需安装。Dao 的 `package.json` 中这些作为 `peerDependencies`，用户只安装自己需要的 provider。
+```
+dao
+├── dependencies（自动安装）
+│   ├── ai              — AI SDK 核心
+│   └── @ai-sdk/openai  — OpenAI + DeepSeek 兼容
+│
+├── peerDependencies（可选，按需安装）
+│   ├── @ai-sdk/google
+│   ├── @ai-sdk/anthropic
+│   ├── @ai-sdk/moonshotai
+│   ├── @ai-sdk/alibaba
+│   └── @ai-sdk/zhipu
+│
+└── 用户自行安装（registerProvider 接入）
+    ├── @ai-sdk/mistral
+    ├── @ai-sdk/groq
+    ├── @ai-sdk/xai
+    └── ...
+```

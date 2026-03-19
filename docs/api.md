@@ -8,6 +8,28 @@
 
 创建一个 Agent。
 
+### 快速示例
+
+```typescript
+import { agent } from "dao"
+
+// 最简用法
+const bot = agent({ model: "deepseek/deepseek-chat" })
+await bot.chat("你好")
+
+// 完整用法
+const reviewer = agent({
+  role: "代码审查员",
+  model: "deepseek/deepseek-chat",
+  tools: [readFile, listDir],
+  steps: ["了解项目结构", "分析代码", "生成报告"],
+  rules: { focus: ["代码质量"], reject: ["修改代码"] },
+  memory: true,
+})
+const result = await reviewer.run("审查 src/ 目录")
+console.log(result.output)
+```
+
 ### 类型定义
 
 ```typescript
@@ -197,6 +219,23 @@ interface RunEvent {
 
 创建一个 Agent 团队。
 
+> ⚠️ team() 计划在 V1.0 实现，以下为 API 设计预览。
+
+### 快速示例
+
+```typescript
+import { agent, team } from "dao"
+
+const planner = agent({ role: "架构师", tools: [readFile] })
+const coder = agent({ role: "开发者", tools: [readFile, writeFile] })
+const tester = agent({ role: "测试工程师", tools: [readFile, runCommand] })
+
+const squad = team({
+  members: { planner, coder, tester },
+})
+await squad.run("给项目添加用户登录功能")
+```
+
 ### 类型定义
 
 ```typescript
@@ -289,6 +328,19 @@ tool({
 ---
 
 ## 3. tool() — 定义工具
+
+### 快速示例
+
+```typescript
+import { tool } from "dao"
+
+const readFile = tool({
+  name: "readFile",
+  description: "读取文件内容",
+  params: { path: "文件路径" },
+  run: ({ path }) => fs.readFileSync(path, "utf-8"),
+})
+```
 
 ### 类型定义
 
@@ -419,6 +471,27 @@ interface ToolContext {
 
 定义一个插件。
 
+> ⚠️ plugin() 计划在 V1.0 实现，以下为 API 设计预览。
+
+### 快速示例
+
+```typescript
+import { plugin, agent } from "dao"
+
+function logger() {
+  return plugin({
+    name: "logger",
+    hooks: {
+      beforeModelCall: (ctx) => console.log("调用模型:", ctx.prompt),
+      afterToolCall: (ctx) => console.log("工具结果:", ctx.result),
+      onError: (ctx) => console.error("出错:", ctx.error),
+    },
+  })
+}
+
+const bot = agent({ plugins: [logger()] })
+```
+
 ### 类型定义
 
 ```typescript
@@ -492,6 +565,19 @@ interface PluginInstance {
 ---
 
 ## 5. 全局配置
+
+### 快速示例
+
+```typescript
+import { configure } from "dao"
+
+configure({
+  defaultModel: "deepseek/deepseek-chat",
+  defaultMaxTurns: 30,
+})
+```
+
+### 类型定义
 
 ```typescript
 import { configure } from "dao"

@@ -28,7 +28,10 @@
     "dev": "tsup --watch",
     "test": "vitest",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [
     "ai",
@@ -50,5 +53,32 @@
   "homepage": "https://github.com/exposir/Dao",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.41",
+    "ai": "^6.0.116"
+  },
+  "peerDependencies": {
+    "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/moonshotai": "^0.1.0",
+    "@ai-sdk/alibaba": "^0.1.0",
+    "@ai-sdk/zhipu": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/google": { "optional": true },
+    "@ai-sdk/anthropic": { "optional": true },
+    "@ai-sdk/moonshotai": { "optional": true },
+    "@ai-sdk/alibaba": { "optional": true },
+    "@ai-sdk/zhipu": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "dotenv": "^17.3.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.1.0"
   }
 }
