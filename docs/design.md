@@ -400,7 +400,7 @@ const bot = agent({ plugins: [logger()] })
 | 多 Agent | `team()` | Network | ❌ 自己写 | Graph | supervisor | ❌ |
 | Workflow | `steps` 列表 | 链式 API | ❌ 没有 | 有向图 | workflow engine | ❌ |
 | Memory | `memory: true` | 需要配置 | ❌ 自己写 | 需要配置 | ✅ 内置 | ❌ |
-| 权限 | `rules.reject` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 行为约束 | `rules.reject` | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 核心代码量 | 目标 < 3000 行 | 5000+ 行 | N/A | N/A | 中等 | < 500 行 |
 
 ### 6.2 核心差异化
