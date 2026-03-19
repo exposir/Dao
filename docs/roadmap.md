@@ -223,6 +223,11 @@ await bot.chat("读一下 package.json 的内容")
 - 作为 MCP Client 接入社区工具生态
 - `tools: [mcp("github"), mcp("filesystem")]`
 
+### RAG（检索增强生成）
+
+- 不内置 RAG 模块，通过 `tool()` 接入向量数据库 API（Pinecone / Milvus / Weaviate 等）
+- MCP 支持后可直接挂载社区 RAG 服务：`tools: [mcp("rag-server")]`
+
 ---
 
 ## 开发顺序
