@@ -360,7 +360,7 @@ interface ToolInstance {
   name: string
   description: string
   schema: JSONSchema
-  execute: (params: any) => Promise<any>
+  execute: (params: any, ctx?: ToolContext) => Promise<any>
   confirm: boolean
 }
 ```
@@ -432,6 +432,12 @@ interface HookContext {
 
   /** 在 context 上存储插件数据 */
   store: Record<string, any>
+
+  /** 
+   * 跳过后续核心行为。所有 hook 都可调用，
+   * 但仅在 beforeToolCall / beforeModelCall 中生效。
+   */
+  skip: () => void
 }
 ```
 
@@ -478,8 +484,8 @@ export { plugin } from "./plugin"
 export { configure } from "./config"
 
 // dao/tools 内置工具
-export { readFile, writeFile, listDir } from "dao/tools"
+export { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
 
-// dao/plugins 内置插件
+// dao/plugins 内置插件（工厂函数，调用后返回插件实例）
 export { logger } from "dao/plugins"
 ```

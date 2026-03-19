@@ -57,10 +57,10 @@ interface HookContext {
   store: Record<string, any>
 
   /** 
-   * 跳过后续处理（仅部分 hooks 支持）
-   * 例如 beforeToolCall 中调用 skip() 可以阻止工具执行
+   * 跳过后续核心行为。所有 hook 都可调用，
+   * 但仅在 beforeToolCall / beforeModelCall 中生效。
    */
-  skip?: () => void
+  skip: () => void
 }
 ```
 
@@ -71,23 +71,28 @@ interface HookContext {
 ### 4.1 Logger 插件
 
 ```typescript
-const logger = plugin({
-  name: "logger",
-  hooks: {
-    beforeModelCall: (ctx) => {
-      console.log(`[${new Date().toISOString()}] 调用模型`)
+import { plugin } from "dao"
+
+// 工厂函数：调用后返回插件实例
+function logger() {
+  return plugin({
+    name: "logger",
+    hooks: {
+      beforeModelCall: (ctx) => {
+        console.log(`[${new Date().toISOString()}] 调用模型`)
+      },
+      afterToolCall: (ctx) => {
+        console.log(`[${new Date().toISOString()}] 工具 ${ctx.tool}: ${JSON.stringify(ctx.result).slice(0, 100)}`)
+      },
+      onComplete: (ctx) => {
+        console.log(`[${new Date().toISOString()}] 完成，耗时 ${ctx.result.duration}ms`)
+      },
+      onError: (ctx) => {
+        console.error(`[${new Date().toISOString()}] 错误:`, ctx.error.message)
+      },
     },
-    afterToolCall: (ctx) => {
-      console.log(`[${new Date().toISOString()}] 工具 ${ctx.tool}: ${JSON.stringify(ctx.result).slice(0, 100)}`)
-    },
-    onComplete: (ctx) => {
-      console.log(`[${new Date().toISOString()}] 完成，耗时 ${ctx.result.duration}ms`)
-    },
-    onError: (ctx) => {
-      console.error(`[${new Date().toISOString()}] 错误:`, ctx.error.message)
-    },
-  },
-})
+  })
+}
 ```
 
 ### 4.2 Token 计数插件
@@ -153,7 +158,7 @@ import { configure, agent } from "dao"
 
 // 全局插件：所有 agent 自动加载
 configure({
-  globalPlugins: [logger],
+  globalPlugins: [logger()],
 })
 
 // 实例插件：仅当前 agent 加载
