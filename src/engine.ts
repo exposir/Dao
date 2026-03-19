@@ -107,9 +107,13 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext): Prom
   if (typeof step.if === "string") {
     // 字符串条件 → 让 Agent 判断
     const answer = await ctx.agent.chat(
-      `请判断以下条件是否成立，只回答"是"或"否"：${step.if}`
+      `请判断以下条件是否成立，只回答"YES"或"NO"：${step.if}`
     )
-    condition = answer.includes("是")
+    const normalized = answer.trim().toUpperCase()
+    // 先检查否定，再检查肯定
+    const isNo = /\b(NO|FALSE)\b/.test(normalized) || /^(否|不是|没有|不)/.test(answer.trim())
+    const isYes = /\b(YES|TRUE)\b/.test(normalized) || /^(是|有|对)/.test(answer.trim())
+    condition = isYes && !isNo
   } else {
     // 函数条件 → 直接执行
     condition = await step.if(ctx)

@@ -42,6 +42,12 @@ export function team(options: TeamOptions): TeamInstance {
     })
     .join("\n")
 
+  // 用闭包收集 member 执行结果
+  const memberResults: Record<string, any[]> = {}
+  for (const name of Object.keys(members)) {
+    memberResults[name] = []
+  }
+
   // 为 lead 创建 delegate 工具
   const delegateTool = tool({
     name: "delegate",
@@ -60,6 +66,7 @@ export function team(options: TeamOptions): TeamInstance {
 
       try {
         const result = await memberAgent.run(task)
+        memberResults[memberName].push(result)
         return result.output
       } catch (err: any) {
         return `成员 "${memberName}" 执行失败：${err.message}`
@@ -91,16 +98,17 @@ export function team(options: TeamOptions): TeamInstance {
         (config.systemPrompt ?? "") +
         `\n\n你可以使用 delegate 工具委派任务给团队成员。\n团队成员：\n${memberDescriptions}`,
     })
-    return createTeamInstance(enhancedLead, members, options)
+    return createTeamInstance(enhancedLead, members, memberResults, options)
   }
 
-  return createTeamInstance(leadAgent, members, options)
+  return createTeamInstance(leadAgent, members, memberResults, options)
 }
 
 /** 创建 TeamInstance */
 function createTeamInstance(
   leadAgent: AgentInstance,
   members: Record<string, AgentInstance>,
+  memberResults: Record<string, any[]>,
   options: TeamOptions,
 ): TeamInstance {
   return {
@@ -111,7 +119,7 @@ function createTeamInstance(
 
       return {
         output: result.output,
-        memberResults: {},
+        memberResults,
         usage: result.usage,
         duration: Date.now() - startTime,
       }
