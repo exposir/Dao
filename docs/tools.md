@@ -132,12 +132,14 @@ if (rules.reject?.length) {
 
 > 不做硬拦截。LLM 负责判断什么工具调用违反了 reject 规则。后续版本可增加工具级精确拦截。
 
-### confirm 确认
+### confirm 确认（预留）
 
-当 `tool({ confirm: true })` 时，工具调用前需要用户确认：
+> ⚠️ confirm 机制尚未实现。当前设置 `confirm: true` 会直接报错，请自行在 `run()` 中实现确认逻辑。
+
+未来计划的确认流程：
 
 ```typescript
-// confirm 流程
+// 未来 confirm 流程（尚未实现）
 if (tool.confirm) {
   const confirmed = await requestUserConfirmation(toolName, params)
   if (!confirmed) {

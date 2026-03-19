@@ -24,11 +24,17 @@ export interface StepResult {
 }
 
 /**
+ * 执行单个字符串任务的回调（由 agent.ts 提供，直接走 runLoop 跳过 steps）
+ */
+export type ExecuteTaskFn = (task: string) => Promise<RunResult>
+
+/**
  * 执行步骤序列
  */
 export async function runSteps(
   steps: Step[],
   agent: AgentInstance,
+  executeTask: ExecuteTaskFn,
   onStepStart?: (step: Step, index: number) => void,
   onStepEnd?: (step: Step, index: number, result: any) => void,
 ): Promise<StepResult[]> {
@@ -52,7 +58,7 @@ export async function runSteps(
     ctx.lastResult = lastResult
     ctx.history = history.map(h => ({ step: h.step, result: h.result }))
 
-    const result = await executeStep(step, ctx)
+    const result = await executeStep(step, ctx, executeTask)
     lastResult = result
 
     history.push({ step, result })
@@ -65,10 +71,10 @@ export async function runSteps(
 /**
  * 执行单个步骤
  */
-async function executeStep(step: Step, ctx: StepContext): Promise<any> {
-  // 字符串步骤 → 发送给 Agent
+async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
+  // 字符串步骤 → 通过 executeTask 回调执行（直接走 runLoop，跳过 steps 避免递归）
   if (typeof step === "string") {
-    const result = await ctx.agent.run(step)
+    const result = await executeTask(step)
     return result.output
   }
 
@@ -79,12 +85,12 @@ async function executeStep(step: Step, ctx: StepContext): Promise<any> {
 
   // 并行步骤
   if (isParallelStep(step)) {
-    return await executeParallel(step, ctx)
+    return await executeParallel(step, ctx, executeTask)
   }
 
   // 条件步骤
   if (isConditionalStep(step)) {
-    return await executeConditional(step, ctx)
+    return await executeConditional(step, ctx, executeTask)
   }
 
   throw new Error(`未知的步骤类型: ${JSON.stringify(step)}`)
@@ -93,15 +99,15 @@ async function executeStep(step: Step, ctx: StepContext): Promise<any> {
 /**
  * 并行执行多个子步骤
  */
-async function executeParallel(step: ParallelStep, ctx: StepContext): Promise<any[]> {
-  const tasks = step.parallel.map(subStep => executeStep(subStep as Step, ctx))
+async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any[]> {
+  const tasks = step.parallel.map(subStep => executeStep(subStep as Step, ctx, executeTask))
   return await Promise.all(tasks)
 }
 
 /**
  * 条件执行
  */
-async function executeConditional(step: ConditionalStep, ctx: StepContext): Promise<any> {
+async function executeConditional(step: ConditionalStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
   let condition: boolean
 
   if (typeof step.if === "string") {
@@ -128,7 +134,7 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext): Prom
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      return await executeStep(branch as Step, ctx)
+      return await executeStep(branch as Step, ctx, executeTask)
     } catch (err) {
       lastError = err
       if (err instanceof AbortError) throw err

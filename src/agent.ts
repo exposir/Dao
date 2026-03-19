@@ -45,53 +45,81 @@ export function agent(options: AgentOptions): AgentInstance {
     }
   }
 
+  /**
+   * 执行单个字符串任务（直接走 runLoop，跳过 steps 引擎避免递归）
+   * 作为 executeTask 回调传给 runSteps
+   */
+  async function executeTask(task: string): Promise<RunResult> {
+    return runLoop(options, task, [], instance, pm)
+  }
+
   const instance: AgentInstance = {
     async chat(message: string): Promise<string> {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message })
 
-      const result = await runLoop(options, message, messageHistory, instance, pm)
+      try {
+        const result = await runLoop(options, message, messageHistory, instance, pm)
 
-      // 如果开启了记忆，保存对话历史
-      if (options.memory) {
-        messageHistory.push(
-          { role: "user", content: message },
-          { role: "assistant", content: result.output },
-        )
+        // 如果开启了记忆，保存对话历史
+        if (options.memory) {
+          messageHistory.push(
+            { role: "user", content: message },
+            { role: "assistant", content: result.output },
+          )
+        }
+
+        await pm.emit("onComplete", instance, { result })
+        return result.output
+      } catch (err: any) {
+        await pm.emit("onError", instance, { error: err })
+        throw err
       }
-
-      await pm.emit("onComplete", instance, { result })
-      return result.output
     },
 
     async run(task: string): Promise<RunResult> {
       await ensureInit()
 
-      // 如果有 steps，使用 Steps 引擎
-      if (options.steps?.length) {
-        const startTime = Date.now()
-        const stepResults = await runSteps(options.steps, instance)
+      try {
+        // 如果有 steps，使用 Steps 引擎
+        if (options.steps?.length) {
+          const startTime = Date.now()
+          const stepResults = await runSteps(
+            options.steps,
+            instance,
+            executeTask,
+            // onStepStart
+            undefined,
+            // onStepEnd → 触发 afterStep hook
+            async (step, _index, result) => {
+              await pm.emit("afterStep", instance, { step, result })
+            },
+          )
 
-        const lastResult = stepResults[stepResults.length - 1]
-        const result: RunResult = {
-          output: typeof lastResult?.result === "string"
-            ? lastResult.result
-            : JSON.stringify(lastResult?.result ?? ""),
-          turns: stepResults.map((s, i) => ({
-            turn: `step-${i + 1}`,
-            result: s.result,
-          })),
-          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-          duration: Date.now() - startTime,
+          const lastResult = stepResults[stepResults.length - 1]
+          const result: RunResult = {
+            output: typeof lastResult?.result === "string"
+              ? lastResult.result
+              : JSON.stringify(lastResult?.result ?? ""),
+            turns: stepResults.map((s, i) => ({
+              turn: `step-${i + 1}`,
+              result: s.result,
+            })),
+            usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+            duration: Date.now() - startTime,
+          }
+          await pm.emit("onComplete", instance, { result })
+          return result
         }
+
+        // 无 steps，直接运行 Agent Loop
+        const result = await runLoop(options, task, [], instance, pm)
         await pm.emit("onComplete", instance, { result })
         return result
+      } catch (err: any) {
+        await pm.emit("onError", instance, { error: err })
+        throw err
       }
-
-      // 无 steps，直接运行 Agent Loop
-      const result = await runLoop(options, task, [], instance, pm)
-      await pm.emit("onComplete", instance, { result })
-      return result
     },
 
     async *chatStream(message: string): AsyncIterable<string> {
@@ -116,6 +144,31 @@ export function agent(options: AgentOptions): AgentInstance {
     },
 
     async *runStream(task: string): AsyncIterable<RunEvent> {
+      await ensureInit()
+
+      // 如果有 steps，走 steps 引擎
+      if (options.steps?.length) {
+        const stepResults = await runSteps(
+          options.steps,
+          instance,
+          executeTask,
+          // onStepStart → 发 step_start 事件
+          (step, index) => {
+            // 注意：这里不能 yield（非 generator 回调），事件通过 afterStep hook 触发
+          },
+          // onStepEnd → 触发 afterStep hook
+          async (step, _index, result) => {
+            await pm.emit("afterStep", instance, { step, result })
+          },
+        )
+
+        const lastResult = stepResults[stepResults.length - 1]
+        yield { type: "text", data: lastResult?.result ?? "" }
+        yield { type: "done", data: null }
+        return
+      }
+
+      // 无 steps，直接走 runLoopStream
       yield* runLoopStream(options, task, [], instance)
     },
 
@@ -130,3 +183,4 @@ export function agent(options: AgentOptions): AgentInstance {
 
   return instance
 }
+
