@@ -64,7 +64,7 @@ export const listDir = tool({
         function walk(d: string, indent: string) {
           const entries = fs.readdirSync(d, { withFileTypes: true })
           for (const e of entries) {
-            if (e.name.startsWith(".")) continue
+            if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "dist") continue
             const icon = e.isDirectory() ? "📁" : "📄"
             results.push(`${indent}${icon} ${e.name}`)
             if (e.isDirectory()) {
@@ -134,12 +134,13 @@ export const search = tool({
       } catch { /* skip binary files */ }
     }
 
+    const skipDirs = new Set(["node_modules", "dist", ".git", ".next", ".cache"])
+
     function walk(d: string) {
       try {
         const entries = fs.readdirSync(d, { withFileTypes: true })
         for (const e of entries) {
-          const skip = new Set(["node_modules", "dist", ".git", ".next", ".cache"])
-          if (skip.has(e.name)) continue
+          if (skipDirs.has(e.name)) continue
           const fullPath = path.join(d, e.name)
           if (e.isDirectory()) {
             walk(fullPath)

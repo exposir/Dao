@@ -62,7 +62,7 @@ export async function runSteps(
     lastResult = result
 
     history.push({ step, result })
-    onStepEnd?.(step, i, result)
+    await onStepEnd?.(step, i, result)
   }
 
   return history

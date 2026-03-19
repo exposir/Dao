@@ -76,25 +76,12 @@ export function team(options: TeamOptions): TeamInstance {
   })
 
   // 创建 lead Agent
-  const leadConfig = lead?.getConfig?.() ?? {}
-  const leadAgent = lead ?? agent({
-    role: "团队负责人",
-    model: leadConfig.model ?? Object.values(members)[0]?.getConfig().model,
-    maxTurns: maxRounds,
-    plugins,
-    systemPrompt:
-      `你是团队负责人，负责分解任务并委派给合适的成员执行。\n` +
-      `团队成员：\n${memberDescriptions}\n\n` +
-      `请使用 delegate 工具将子任务分配给合适的成员。\n` +
-      `策略：${strategy === "sequential" ? "按顺序逐个委派" : strategy === "parallel" ? "尽量并行委派" : "根据任务特点自动决定"}`,
-    tools: [...(leadConfig.tools ?? []), delegateTool],
-  })
+  let leadAgent: AgentInstance
 
-  // 如果用户提供了 lead，为其注入 delegate 工具
   if (lead) {
+    // 用户提供了 lead，注入 delegate 工具
     const config = lead.getConfig()
-    // 重新创建 lead，注入 delegate 工具
-    const enhancedLead = agent({
+    leadAgent = agent({
       ...config,
       maxTurns: maxRounds ?? config.maxTurns,
       plugins: plugins ? [...(config.plugins ?? []), ...plugins] : config.plugins,
@@ -103,7 +90,20 @@ export function team(options: TeamOptions): TeamInstance {
         (config.systemPrompt ?? "") +
         `\n\n你可以使用 delegate 工具委派任务给团队成员。\n团队成员：\n${memberDescriptions}`,
     })
-    return createTeamInstance(enhancedLead, members, memberResults, options)
+  } else {
+    // 无 lead，自动创建
+    leadAgent = agent({
+      role: "团队负责人",
+      model: Object.values(members)[0]?.getConfig().model,
+      maxTurns: maxRounds,
+      plugins,
+      systemPrompt:
+        `你是团队负责人，负责分解任务并委派给合适的成员执行。\n` +
+        `团队成员：\n${memberDescriptions}\n\n` +
+        `请使用 delegate 工具将子任务分配给合适的成员。\n` +
+        `策略：${strategy === "sequential" ? "按顺序逐个委派" : strategy === "parallel" ? "尽量并行委派" : "根据任务特点自动决定"}`,
+      tools: [delegateTool],
+    })
   }
 
   return createTeamInstance(leadAgent, members, memberResults, options)

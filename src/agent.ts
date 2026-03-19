@@ -47,10 +47,14 @@ export function agent(options: AgentOptions): AgentInstance {
 
   /**
    * 执行单个字符串任务（直接走 runLoop，跳过 steps 引擎避免递归）
-   * 作为 executeTask 回调传给 runSteps
+   * 收集每步的 usage 用于汇总
    */
+  const stepUsages: { promptTokens: number; completionTokens: number; totalTokens: number }[] = []
+
   async function executeTask(task: string): Promise<RunResult> {
-    return runLoop(options, task, [], instance, pm)
+    const result = await runLoop(options, task, [], instance, pm)
+    stepUsages.push(result.usage)
+    return result
   }
 
   const instance: AgentInstance = {
@@ -97,6 +101,14 @@ export function agent(options: AgentOptions): AgentInstance {
           )
 
           const lastResult = stepResults[stepResults.length - 1]
+
+          // 汇总所有步骤的 token 用量
+          const totalUsage = {
+            promptTokens: stepUsages.reduce((s, u) => s + u.promptTokens, 0),
+            completionTokens: stepUsages.reduce((s, u) => s + u.completionTokens, 0),
+            totalTokens: stepUsages.reduce((s, u) => s + u.totalTokens, 0),
+          }
+
           const result: RunResult = {
             output: typeof lastResult?.result === "string"
               ? lastResult.result
@@ -105,7 +117,7 @@ export function agent(options: AgentOptions): AgentInstance {
               turn: `step-${i + 1}`,
               result: s.result,
             })),
-            usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+            usage: totalUsage,
             duration: Date.now() - startTime,
           }
           await pm.emit("onComplete", instance, { result })
@@ -126,20 +138,25 @@ export function agent(options: AgentOptions): AgentInstance {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message })
 
-      let fullText = ""
-      for await (const event of runLoopStream(options, message, messageHistory, instance)) {
-        if (event.type === "text") {
-          fullText += event.data
-          yield event.data
+      try {
+        let fullText = ""
+        for await (const event of runLoopStream(options, message, messageHistory, instance)) {
+          if (event.type === "text") {
+            fullText += event.data
+            yield event.data
+          }
         }
-      }
 
-      // 流式结束后保存记忆，与 chat() 行为一致
-      if (options.memory) {
-        messageHistory.push(
-          { role: "user", content: message },
-          { role: "assistant", content: fullText },
-        )
+        // 流式结束后保存记忆，与 chat() 行为一致
+        if (options.memory) {
+          messageHistory.push(
+            { role: "user", content: message },
+            { role: "assistant", content: fullText },
+          )
+        }
+      } catch (err: any) {
+        await pm.emit("onError", instance, { error: err })
+        throw err
       }
     },
 
