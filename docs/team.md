@@ -23,7 +23,11 @@ team.run("任务")
 当用户不指定 `lead` 时，框架自动生成：
 
 ```typescript
-function createAutoLead(members: Record<string, AgentInstance>, maxRounds: number): AgentInstance {
+function createAutoLead(
+  members: Record<string, AgentInstance>,
+  maxRounds: number,
+  delegateTools: ToolInstance[],
+): AgentInstance {
   // 1. 收集所有成员信息
   const memberDescriptions = Object.entries(members)
     .map(([name, member]) => {
@@ -32,10 +36,7 @@ function createAutoLead(members: Record<string, AgentInstance>, maxRounds: numbe
     })
     .join("\n")
 
-  // 2. 为每个成员生成委派工具（和自定义 lead 路径共用同一个函数）
-  const delegateTools = createDelegateTools(members)
-
-  // 3. 创建 lead Agent
+  // 2. 创建 lead Agent（delegateTools 由外部 createDelegateTools 生成）
   return agent({
     role: "团队调度员",
     maxTurns: maxRounds,
@@ -102,12 +103,12 @@ planner.run("分析需求")
 自动 lead 和自定义 lead **共用同一个函数**生成 delegate 工具。内部对 `member.run()` 做包装拦截，收集完整 RunResult 到内部数组，返回给 lead 的只是 `result.output`。
 
 ```typescript
-function createDelegateTools(members: Record<string, AgentInstance>): ToolInstance[] {
-  const results: Record<string, RunResult[]> = {}
+function createDelegateTools(members: Record<string, AgentInstance>) {
+  const memberResults: Record<string, RunResult[]> = {}
 
-  return Object.entries(members).map(([name, member]) => {
+  const tools = Object.entries(members).map(([name, member]) => {
     const config = member.getConfig()
-    results[name] = []
+    memberResults[name] = []
 
     return tool({
       name: `delegate_to_${name}`,
@@ -115,11 +116,14 @@ function createDelegateTools(members: Record<string, AgentInstance>): ToolInstan
       params: { task: "任务描述" },
       run: async ({ task }) => {
         const result = await member.run(task)
-        results[name].push(result)  // 收集完整 RunResult
-        return result.output        // 只返回 output 给 lead
+        memberResults[name].push(result)  // 收集完整 RunResult
+        return result.output              // 只返回 output 给 lead
       },
     })
   })
+
+  // 返回 tools 和 results 引用，teamRun 直接用 memberResults
+  return { tools, memberResults }
 }
 ```
 
@@ -131,33 +135,31 @@ function createDelegateTools(members: Record<string, AgentInstance>): ToolInstan
 async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResult> {
   const { lead, members, maxRounds = 20, plugins = [] } = options
 
-  // 1. 创建 lead（自动生成时直接设 maxTurns）
+  // 1. 生成 delegate 工具（同时获得 memberResults 引用）
+  const { tools: delegateTools, memberResults } = createDelegateTools(members)
+
+  // 2. 创建 lead
   let leadAgent: AgentInstance
   if (lead) {
-    // 自定义 lead：clone 配置 + 注入 delegate 工具 + 设 maxTurns
     const config = lead.getConfig()
     leadAgent = agent({
       ...config,
       maxTurns: maxRounds,
-      tools: [...(config.tools || []), ...createDelegateTools(members)],
+      tools: [...(config.tools || []), ...delegateTools],
     })
   } else {
-    // 自动生成 lead：maxTurns 直接设为 maxRounds
-    leadAgent = createAutoLead(members, maxRounds)
+    leadAgent = createAutoLead(members, maxRounds, delegateTools)
   }
 
-  // 2. 注入团队级插件（本质是挂在 lead 上的 agent 级插件）
-  // member 的插件由 member 自己管理，team plugins 不会注入到 member
+  // 3. 注入团队级插件（本质是挂在 lead 上的 agent 级插件）
   if (plugins.length) {
     leadAgent = agent({ ...leadAgent.getConfig(), plugins: [...(leadAgent.getConfig().plugins || []), ...plugins] })
   }
 
-  // 3. 执行 lead
+  // 4. 执行 lead
   const result = await leadAgent.run(task)
 
-  // 4. 收集成员执行记录
-  const memberResults = collectMemberResults(members)
-
+  // 5. memberResults 已由 delegate 工具自动收集，直接使用
   return {
     output: result.output,
     memberResults,
@@ -167,7 +169,7 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 }
 ```
 
-> **memberResults 收集机制**：team 层在生成 delegate 工具时，对每个 `member.run()` 做包装拦截，将完整的 `RunResult` 记录到内部数组中。delegate 工具返回给 lead 的只是 `result.output`（字符串），但 team 层保留了完整记录用于最终的 `TeamRunResult.memberResults`。
+> **memberResults 数据链路**：`createDelegateTools()` 返回 `{ tools, memberResults }`。delegate 工具每次调用 `member.run()` 时自动将完整 RunResult push 到 `memberResults` 中。`teamRun` 持有同一个引用，执行结束后直接用。
 
 ---
 

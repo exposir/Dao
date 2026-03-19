@@ -304,7 +304,7 @@ tool() 定义 →
 | **阿里通义千问 Qwen** | `@ai-sdk/alibaba` | `"alibaba/qwen3-max"` | 官方 |
 | **智谱 GLM** | `@ai-sdk/zhipu` | `"zhipu/glm-4-plus"` | 官方 |
 | **MiniMax** | 社区包 | `"minimax/minimax-m2"` | 通过 `registerProvider()` 接入 |
-| **百川 / Yi / 豆包** | OpenAI 兼容 | 通过 `registerProvider()` 接入 | 通过 `registerProvider()` 接入 |
+| **百川 / Yi / 豆包** | OpenAI 兼容 | `"baidu/ernie-4.0"` 等 | 通过 `registerProvider()` 接入 |
 
 #### 商业模型
 
