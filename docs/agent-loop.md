@@ -193,10 +193,8 @@ const result = streamText({
 for await (const event of agent.runStream("任务")) {
   switch (event.type) {
     case "text":        // 文本片段
-    case "step_start":  // Steps 引擎：开始新步骤
-    case "step_end":    // Steps 引擎：步骤完成
-    case "error":       // 错误
     case "done":        // 全部完成
+    // 未来计划支持：step_start / step_end / error 等
   }
 }
 ```

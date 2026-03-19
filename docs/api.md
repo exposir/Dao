@@ -207,8 +207,9 @@ interface RunResult {
   duration: number
 }
 
+// 流式事件（当前仅支持 text 和 done，未来计划扩展）
 interface RunEvent {
-  type: "text" | "step_start" | "step_end" | "error" | "done"
+  type: "text" | "done"
   data: any
 }
 ```
@@ -291,9 +292,10 @@ interface TeamRunResult {
   duration: number
 }
 
+// 团队流式事件（当前仅透传 lead 的 text/done，未来计划支持团队级事件）
 interface TeamRunEvent {
-  type: "delegate" | "member_start" | "member_end" | "text" | "error" | "done"
-  member?: string
+  type: "text" | "done"
+  member: string  // 当前固定为 "lead"
   data: any
 }
 ```
