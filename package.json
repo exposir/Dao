@@ -1,0 +1,54 @@
+{
+  "name": "dao",
+  "version": "0.0.1",
+  "description": "Dao（道）— 大道至简的 AI Agent 框架",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./tools": {
+      "import": "./dist/tools/index.js",
+      "types": "./dist/tools/index.d.ts"
+    },
+    "./plugins": {
+      "import": "./dist/plugins/index.js",
+      "types": "./dist/plugins/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "llm",
+    "typescript",
+    "dao",
+    "framework",
+    "deepseek",
+    "openai",
+    "gemini"
+  ],
+  "author": "exposir",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/exposir/Dao.git"
+  },
+  "homepage": "https://github.com/exposir/Dao",
+  "engines": {
+    "node": ">=18"
+  }
+}
