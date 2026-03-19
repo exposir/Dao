@@ -425,47 +425,7 @@ const bot = agent({ plugins: [logger()] })
 
 ## 七、版本规划
 
-### V0.1 — 核心可用
-
-- [x] `agent()` API + Agent Loop
-- [x] `tool()` API（单对象写法 + 自动转 JSON Schema）
-- [x] 模型层（DeepSeek / OpenAI / Gemini）
-- [x] 流式输出
-- [x] `memory: true` 基础记忆（内存数组）
-
-### V0.5 — 流程控制
-
-- [x] `steps` 引擎（parallel / if / retry）
-- [x] `rules`（focus / reject）
-- [ ] 上下文压缩（memory 高级管理）
-- [ ] `wait` 步骤 + `resume()` API
-
-### V1.0 — 完整能力
-
-- [x] `team()` API + 单 Agent 调度
-- [x] 插件系统（hooks）
-- [x] 内置工具（readFile / writeFile / listDir / runCommand / search）
-- [x] 中文文档
-
-### V1.1 — 生产可用
-
-- [ ] 模型调用重试 + 指数退避
-- [ ] 超时控制（`timeout` 参数）
-- [ ] 错误分类（ModelError / ToolError / TimeoutError）
-- [ ] maxTokens 上限
-- [ ] parallel 并发控制
-
-### V2.0 — 企业级
-
-- [ ] 结构化日志 + 链路追踪
-- [ ] OpenTelemetry 集成
-- [ ] Fallback 模型（主模型挂了自动切备用）
-- [ ] 成本上限
-- [ ] 上下文窗口管理（自动截断/摘要）
-- [ ] confirm 机制实现
-- [ ] 完整流式事件（step_start / step_end / tool_call 等）
-- [ ] 可测试性（mock 模型注入 + 响应录制/回放）
-- [ ] MCP 协议支持
+详见 [Roadmap](./roadmap.md)。
 
 ---
 
