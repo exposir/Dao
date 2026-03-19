@@ -457,12 +457,14 @@ const bot = agent({ plugins: [logger()] })
 
 ### V2.0 — 企业级
 
-- [ ] Fallback 模型（主模型挂了自动切备用）
 - [ ] 结构化日志 + 链路追踪
-- [ ] 完整流式事件（step_start / step_end / tool_call 等）
-- [ ] 上下文窗口管理（自动截断/摘要）
+- [ ] OpenTelemetry 集成
+- [ ] Fallback 模型（主模型挂了自动切备用）
 - [ ] 成本上限
+- [ ] 上下文窗口管理（自动截断/摘要）
 - [ ] confirm 机制实现
+- [ ] 完整流式事件（step_start / step_end / tool_call 等）
+- [ ] 可测试性（mock 模型注入 + 响应录制/回放）
 - [ ] MCP 协议支持
 
 ---
