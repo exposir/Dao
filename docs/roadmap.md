@@ -182,49 +182,126 @@ await bot.chat("读一下 package.json 的内容")
 
 ---
 
-## 未来版本 — 企业级能力
+## V1.1 — 生产可用
 
-> API 已预留扩展点（见 `AgentOptions` 和 `ConfigOptions` 中的预留字段），以下能力按需实现。
+> 目标：重试 + 超时 + 错误分类 + 基础安全边界，让框架可以放心上生产
 
-### 可观测性（Observability）
+### 第 13 步：重试与退避
 
-- `ConfigOptions.telemetry`：tracing 链路追踪、token 用量统计
-- 自定义数据导出（OpenTelemetry 兼容）
+| 文件 | 内容 |
+|---|---|
+| `src/core/loop.ts` | generateText / streamText 传入 `maxRetries`，429 自动等待 retry-after |
+| `src/core/types.ts` | `AgentOptions.retry?: { maxRetries?: number; backoff?: "exponential" }` |
 
-### 容错与自愈（Resilience）
+### 第 14 步：超时控制
 
-- `ConfigOptions.retry`：模型调用自动重试 + 指数退避
+| 文件 | 内容 |
+|---|---|
+| `src/core/loop.ts` | AbortController + setTimeout，超时抛 TimeoutError |
+| `src/core/types.ts` | `AgentOptions.timeout?: number`（毫秒） |
+
+### 第 15 步：错误分类
+
+| 文件 | 内容 |
+|---|---|
+| `src/core/errors.ts` | DaoError 基类 + ModelError / ToolError / TimeoutError |
+| `src/core/loop.ts` | catch 后包装为对应错误类型 |
+| `src/tool.ts` | 工具执行失败包装为 ToolError |
+
+### 第 16 步：maxTokens 上限
+
+| 文件 | 内容 |
+|---|---|
+| `src/core/loop.ts` | generateText 传入 `maxTokens` |
+| `src/core/types.ts` | `AgentOptions.maxTokens?: number` |
+
+### 第 17 步：并发控制
+
+| 文件 | 内容 |
+|---|---|
+| `src/engine.ts` | parallel 步骤支持 `concurrency` 限制 |
+| `src/core/types.ts` | `ParallelStep.concurrency?: number` |
+
+### V1.1 交付物
+
+- [ ] 模型调用自动重试（指数退避）
+- [ ] 429 rate limit 自动等待
+- [ ] 单次调用超时控制
+- [ ] 错误分类（ModelError / ToolError / TimeoutError）
+- [ ] maxTokens 上限
+- [ ] parallel 并发限制
+
+---
+
+## V2.0 — 企业级能力
+
+> 目标：Fallback 模型 + 结构化日志 + 流式事件扩展 + 上下文管理
+
+### Fallback Model
+
 - `AgentOptions.fallbackModel`：主模型失败自动切换备用
+- 切换时触发 `onError` hook 通知插件
 
-### 上下文管理（Context Management）
+### 结构化日志
+
+- logger 插件支持 JSON 格式输出
+- 请求 ID 链路追踪（`RunResult.requestId`）
+- token 用量统计（用于计算成本）
+
+### 流式事件扩展
+
+- RunEvent 新增 `step_start / step_end / error / tool_call` 类型
+- TeamRunEvent 新增 `delegate / member_start / member_end` 类型
+- runLoopStream 接入 PluginManager 完整生命周期
+
+### 上下文管理
 
 - `AgentOptions.contextWindow`：token 计数 + 自动截断/摘要
-- 可能引入依赖：`tiktoken`（token 计数库）
+- 可能引入依赖：`tiktoken`
 
-### 安全边界（Safety Boundary）
+### 成本控制
 
-- `ConfigOptions.maxCostPerRun`：成本上限
-- 工具黑白名单（通过 `beforeToolCall` + `skip()` 插件实现）
+- `configure({ maxCostPerRun: 1.0 })`：单次成本上限
+- 需要内置各模型价格表
 
-### 可测试性（Testability）
-
-- `AgentOptions.modelProvider`：注入 mock 模型
-- 模型响应录制/回放
-
-### 确认机制扩展（Confirm Extensibility）
+### 确认机制
 
 - `AgentOptions.onConfirm`：自定义确认回调
-- 支持 WebSocket、HTTP 回调等后端确认方式
+- `tool({ confirm: true })` 不再抛错，走 onConfirm 流程
 
 ### MCP 协议支持
 
 - 作为 MCP Client 接入社区工具生态
 - `tools: [mcp("github"), mcp("filesystem")]`
 
+### 可观测性（Observability）
+
+- `ConfigOptions.telemetry`：tracing 链路追踪、token 用量统计
+- 自定义数据导出（OpenTelemetry 兼容）
+- logger 插件支持 JSON 格式输出
+- 请求 ID 链路追踪（`RunResult.requestId`）
+
+### 可测试性（Testability）
+
+- `AgentOptions.modelProvider`：注入 mock 模型
+- 模型响应录制/回放
+- 中间步骤断言：验证 Agent 的决策过程
+
 ### RAG（检索增强生成）
 
 - 不内置 RAG 模块，通过 `tool()` 接入向量数据库 API（Pinecone / Milvus / Weaviate 等）
 - MCP 支持后可直接挂载社区 RAG 服务：`tools: [mcp("rag-server")]`
+
+### V2.0 交付物
+
+- [ ] Fallback 模型
+- [ ] 可观测性 + 链路追踪
+- [ ] 完整流式事件
+- [ ] 上下文窗口管理
+- [ ] 成本上限
+- [ ] confirm 机制实现
+- [ ] 可测试性（mock + 录制回放）
+- [ ] MCP 协议支持
 
 ---
 
@@ -233,18 +310,28 @@ await bot.chat("读一下 package.json 的内容")
 ```
 types.ts → tool.ts → model.ts → loop.ts → agent.ts → index.ts
    1          2          3          4          5          6
-                        V0.1
+                        V0.1 ✅
                     ─────────────────
 
 rules.ts → engine.ts → wait/resume
-   7          8            9
-              V0.5
+   7          8            9(未完成)
+              V0.5 ✅
           ─────────────
 
 plugin.ts → team.ts → tools/
    10         11        12
-              V1.0
+              V1.0 ✅
           ─────────────
+
+retry → timeout → errors → maxTokens → concurrency
+  13      14        15        16           17
+                    V1.1
+               ─────────────
+
+fallback → logger → streaming → context → cost → confirm → MCP
+                         V2.0
+                    ─────────────────────────
 ```
 
 依赖关系：每一步只依赖前面的步骤，不存在循环依赖。
+

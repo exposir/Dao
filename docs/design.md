@@ -447,13 +447,23 @@ const bot = agent({ plugins: [logger()] })
 - [x] 内置工具（readFile / writeFile / listDir / runCommand / search）
 - [x] 中文文档
 
-### 不做（后续版本）
+### V1.1 — 生产可用
 
+- [ ] 模型调用重试 + 指数退避
+- [ ] 超时控制（`timeout` 参数）
+- [ ] 错误分类（ModelError / ToolError / TimeoutError）
+- [ ] maxTokens 上限
+- [ ] parallel 并发控制
+
+### V2.0 — 企业级
+
+- [ ] Fallback 模型（主模型挂了自动切备用）
+- [ ] 结构化日志 + 链路追踪
+- [ ] 完整流式事件（step_start / step_end / tool_call 等）
+- [ ] 上下文窗口管理（自动截断/摘要）
+- [ ] 成本上限
+- [ ] confirm 机制实现
 - [ ] MCP 协议支持
-- [ ] 高级 Memory（向量存储、RAG）
-- [ ] Observability 插件
-- [ ] Time Travel
-- [ ] 沙箱 / UI / 通信协议
 
 ---
 
