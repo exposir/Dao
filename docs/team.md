@@ -83,6 +83,8 @@ const squad = team({
 
 自定义 lead 时，框架仍然自动注入 delegate 工具，但 lead 的行为由用户的 `steps` 控制。
 
+> **maxRounds 语义**：`maxRounds` 等价于 lead Agent 的 `maxTurns`——即 lead 的模型调用轮次上限。由 lead 的 Agent Loop 维护，到达时触发 Grace Period。每次 delegate 调用算一轮。
+
 ---
 
 ## 4. 成员间通信
@@ -119,7 +121,10 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
     injectDelegateTools(leadAgent, members)
   }
 
-  // 3. 执行 lead
+  // 3. 将 maxRounds 设为 lead 的 maxTurns
+  leadAgent.options.maxTurns = maxRounds
+
+  // 4. 执行 lead
   const result = await leadAgent.run(task)
 
   // 4. 收集成员执行记录
