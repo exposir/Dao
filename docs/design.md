@@ -11,6 +11,7 @@ import { agent } from "dao"
 
 const bot = agent({ model: "deepseek/deepseek-chat" })
 await bot.chat("你好")
+```
 
 ### 目标用户
 
@@ -116,7 +117,7 @@ await bot.chat("你好")                    // 对话模式
 await bot.run("审查 src/ 目录下的代码")     // 任务模式
 ```
 
-### 3.2 team() — 创建团队
+### 3.2 team() — 创建团队（V1.0 计划）
 
 ```typescript
 import { agent, team } from "dao"
@@ -161,7 +162,7 @@ const squad = team({
 await squad.run("给项目添加用户登录功能")
 ```
 
-> **架构说明**：`team()` 底层是单 Agent 架构——lead 做决策，members 被调用。但开发者看到的是"团队协作"。
+> **架构说明**：`team()` 底层是单 Agent 架构——lead 做决策，members 被调用。但开发者看到的是"团队协作"。计划在 V1.0 实现。
 
 ### 3.3 tool() — 定义工具
 
@@ -420,18 +421,25 @@ const bot = agent({ plugins: [logger] })
 
 ---
 
-## 七、V1 范围
+## 七、版本规划
 
-### 做
+### V0.1 — 核心可用
 
 - [ ] `agent()` API + Agent Loop
-- [ ] `team()` API + 单 Agent 调度
-- [ ] `tool()` API（极简写法 + 自动转 JSON Schema）
-- [ ] `steps` 引擎（parallel / if / retry / wait）
+- [ ] `tool()` API（单对象写法 + 自动转 JSON Schema）
+- [ ] 模型层（DeepSeek / OpenAI / Gemini）
+- [ ] 流式输出
+
+### V0.5 — 流程控制
+
+- [ ] `steps` 引擎（parallel / if / retry）
 - [ ] `rules`（focus / reject）
 - [ ] `memory: true` 基础记忆
-- [ ] 多模型支持（DeepSeek / OpenAI / Gemini）
-- [ ] 流式输出（默认开启）
+- [ ] `wait` 步骤 + `resume()` API
+
+### V1.0 — 完整能力
+
+- [ ] `team()` API + 单 Agent 调度
 - [ ] 插件系统（hooks）
 - [ ] 文档（中文先行，后续补充英文）
 
