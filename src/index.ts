@@ -11,6 +11,8 @@ export { configure } from "./config.js"
 export { registerProvider } from "./model.js"
 export { compileRules } from "./rules.js"
 export { AbortError } from "./engine.js"
+export { plugin, logger } from "./plugin.js"
+export { team } from "./team.js"
 
 // 类型导出
 export type {

@@ -209,6 +209,8 @@ export interface TeamOptions {
   lead?: AgentInstance
   /** 团队成员 */
   members: Record<string, AgentInstance>
+  /** 调度策略 */
+  strategy?: "auto" | "sequential" | "parallel"
   /** 插件列表（挂在 lead 上，不注入 member） */
   plugins?: PluginInstance[]
   /**
@@ -222,6 +224,7 @@ export interface TeamOptions {
 export interface TeamInstance {
   run(task: string): Promise<TeamRunResult>
   runStream(task: string): AsyncIterable<TeamRunEvent>
+  getMembers(): Record<string, AgentInstance>
 }
 
 /** 团队执行结果 */

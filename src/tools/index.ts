@@ -1,0 +1,158 @@
+/**
+ * 道（Dao）— 内置工具
+ *
+ * 开箱即用的常用工具集合。
+ * 使用方式：import { readFile, writeFile, listDir, runCommand } from "dao-ai/tools"
+ */
+
+import { tool } from "../tool.js"
+import * as fs from "fs"
+import * as path from "path"
+import { execSync } from "child_process"
+
+/** 读取文件内容 */
+export const readFile = tool({
+  name: "readFile",
+  description: "读取指定路径的文件内容并返回。支持文本文件。",
+  params: {
+    path: "文件的绝对或相对路径",
+    encoding: { type: "string", description: "编码格式，默认 utf-8", optional: true },
+  },
+  run: ({ path: filePath, encoding }) => {
+    try {
+      return fs.readFileSync(filePath, (encoding as BufferEncoding) ?? "utf-8")
+    } catch (err: any) {
+      return `错误：无法读取文件 ${filePath} — ${err.message}`
+    }
+  },
+})
+
+/** 写入文件内容 */
+export const writeFile = tool({
+  name: "writeFile",
+  description: "将内容写入指定路径的文件。如果文件不存在会自动创建，如果父目录不存在也会自动创建。",
+  params: {
+    path: "文件路径",
+    content: "要写入的内容",
+  },
+  run: ({ path: filePath, content }) => {
+    try {
+      const dir = path.dirname(filePath)
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true })
+      }
+      fs.writeFileSync(filePath, content, "utf-8")
+      return `已写入 ${filePath}（${content.length} 字符）`
+    } catch (err: any) {
+      return `错误：无法写入文件 ${filePath} — ${err.message}`
+    }
+  },
+})
+
+/** 列出目录内容 */
+export const listDir = tool({
+  name: "listDir",
+  description: "列出指定目录下的所有文件和子目录。",
+  params: {
+    dir: "目录路径",
+    recursive: { type: "boolean", description: "是否递归列出子目录，默认 false", optional: true },
+  },
+  run: ({ dir, recursive }) => {
+    try {
+      if (recursive) {
+        const results: string[] = []
+        function walk(d: string, indent: string) {
+          const entries = fs.readdirSync(d, { withFileTypes: true })
+          for (const e of entries) {
+            if (e.name.startsWith(".")) continue
+            const icon = e.isDirectory() ? "📁" : "📄"
+            results.push(`${indent}${icon} ${e.name}`)
+            if (e.isDirectory()) {
+              walk(path.join(d, e.name), indent + "  ")
+            }
+          }
+        }
+        walk(dir, "")
+        return results.join("\n")
+      }
+
+      const entries = fs.readdirSync(dir, { withFileTypes: true })
+      return entries
+        .map(e => `${e.isDirectory() ? "📁" : "📄"} ${e.name}`)
+        .join("\n")
+    } catch (err: any) {
+      return `错误：无法读取目录 ${dir} — ${err.message}`
+    }
+  },
+})
+
+/** 执行命令 */
+export const runCommand = tool({
+  name: "runCommand",
+  description: "在系统 shell 中执行命令并返回输出。注意：此工具具有系统级权限，请谨慎使用。",
+  params: {
+    command: "要执行的命令",
+    cwd: { type: "string", description: "工作目录，默认为当前目录", optional: true },
+  },
+  run: ({ command, cwd }) => {
+    try {
+      const output = execSync(command, {
+        cwd: cwd ?? process.cwd(),
+        encoding: "utf-8",
+        timeout: 30000,
+        maxBuffer: 1024 * 1024,
+      })
+      return output.trim() || "(命令执行成功，无输出)"
+    } catch (err: any) {
+      return `命令执行失败：${err.message}\n${err.stderr ?? ""}`
+    }
+  },
+})
+
+/** 搜索文件内容 */
+export const search = tool({
+  name: "search",
+  description: "在指定目录中搜索包含关键词的文件，返回匹配的文件名和行号。",
+  params: {
+    query: "搜索关键词",
+    dir: { type: "string", description: "搜索目录，默认为当前目录", optional: true },
+    ext: { type: "string", description: "文件扩展名过滤，如 .ts .js", optional: true },
+  },
+  run: ({ query, dir, ext }) => {
+    const searchDir = dir ?? "."
+    const results: string[] = []
+
+    function searchFile(filePath: string) {
+      try {
+        const content = fs.readFileSync(filePath, "utf-8")
+        const lines = content.split("\n")
+        lines.forEach((line, i) => {
+          if (line.includes(query)) {
+            results.push(`${filePath}:${i + 1}: ${line.trim()}`)
+          }
+        })
+      } catch { /* skip binary files */ }
+    }
+
+    function walk(d: string) {
+      try {
+        const entries = fs.readdirSync(d, { withFileTypes: true })
+        for (const e of entries) {
+          if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "dist") continue
+          const fullPath = path.join(d, e.name)
+          if (e.isDirectory()) {
+            walk(fullPath)
+          } else {
+            if (ext && !e.name.endsWith(ext)) continue
+            searchFile(fullPath)
+          }
+        }
+      } catch { /* skip inaccessible dirs */ }
+    }
+
+    walk(searchDir)
+    return results.length > 0
+      ? results.slice(0, 50).join("\n") + (results.length > 50 ? `\n... 还有 ${results.length - 50} 条结果` : "")
+      : `未找到包含 "${query}" 的内容`
+  },
+})

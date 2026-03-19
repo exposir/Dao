@@ -23,14 +23,14 @@ import type {
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
 import { compileRules } from "./rules.js"
+import type { PluginManager } from "./plugin.js"
 
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
-function toAITools(tools: ToolInstance[], agentInstance: AgentInstance): ToolSet {
+function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: PluginManager): ToolSet {
   const result: ToolSet = {}
   for (const t of tools) {
     result[t.name] = {
       description: t.description,
-      // AI SDK v5: Tool 类型使用 inputSchema（Schema 对象），不是 parameters
       inputSchema: jsonSchema<any>({
         type: "object",
         properties: t.schema.properties,
@@ -38,12 +38,25 @@ function toAITools(tools: ToolInstance[], agentInstance: AgentInstance): ToolSet
         additionalProperties: false,
       }),
       execute: async (params: any) => {
+        // 触发 beforeToolCall hook
+        if (pm) {
+          const { skipped } = await pm.emit("beforeToolCall", agentInstance, { tool: t.name, params })
+          if (skipped) return "[工具调用被插件跳过]"
+        }
+
         const ctx: ToolContext = {
           agent: agentInstance,
           abort: () => { throw new Error("工具中止执行") },
         }
         const output = await t.execute(params, ctx)
-        return typeof output === "string" ? output : JSON.stringify(output)
+        const result = typeof output === "string" ? output : JSON.stringify(output)
+
+        // 触发 afterToolCall hook
+        if (pm) {
+          await pm.emit("afterToolCall", agentInstance, { tool: t.name, result })
+        }
+
+        return result
       },
     } as any
   }
@@ -79,6 +92,7 @@ export async function runLoop(
   task: string,
   messageHistory: ModelMessage[],
   agentInstance: AgentInstance,
+  pm?: PluginManager,
 ): Promise<RunResult> {
   const globalConfig = getGlobalConfig()
   const maxTurns = options.maxTurns ?? globalConfig.defaultMaxTurns ?? 50
@@ -94,7 +108,7 @@ export async function runLoop(
 
   const model = options.modelProvider ?? await resolveModel(modelString)
   const systemPrompt = buildSystemPrompt(options)
-  const tools = options.tools?.length ? toAITools(options.tools, agentInstance) : undefined
+  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm) : undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,
@@ -102,6 +116,14 @@ export async function runLoop(
   ]
 
   const startTime = Date.now()
+
+  // 触发 beforeModelCall hook
+  if (pm) {
+    const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
+    if (skipped) {
+      return { output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
+    }
+  }
 
   const result = await generateText({
     model,
@@ -114,6 +136,11 @@ export async function runLoop(
       openai: { strictJsonSchema: false },
     },
   })
+
+  // 触发 afterModelCall hook
+  if (pm) {
+    await pm.emit("afterModelCall", agentInstance, { response: result.text })
+  }
 
   // 提取 token 用量
   const usage: TokenUsage = {

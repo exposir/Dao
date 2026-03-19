@@ -24,8 +24,9 @@ src/
 ├── engine.ts     # Steps 引擎（V0.5）
 ├── rules.ts      # Rules 系统（V0.5）
 ├── index.ts      # 导出入口
-├── plugin.ts     # 插件系统（V1.0 计划）
-└── team.ts       # team() 系统（V1.0 计划）
+├── plugin.ts     # 插件系统（V1.0）
+├── team.ts       # team() 系统（V1.0）
+└── tools/        # 内置工具（V1.0）
 ```
 
 ## 设计原则
@@ -51,7 +52,7 @@ src/
 
 - **V0.1**：agent + tool + loop + model + 基础 memory
 - **V0.5**：steps 引擎 + rules 系统
-- **V1.0**：team + plugins + 内置工具 + 完整文档
+- **V1.0**：team + plugins + 内置工具
 
 ## 重要约定
 

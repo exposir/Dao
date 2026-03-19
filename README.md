@@ -9,7 +9,7 @@ Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。基于 Ver
 - 🎯 **描述角色，而非配置机器** — 用 `role`/`tools`/`steps`/`rules` 描述你的 Agent
 - 📈 **渐进式复杂度** — 3 行代码起步，按需扩展
 - 🤖 **开源模型友好** — DeepSeek / Qwen / Kimi 开箱即用
-- 🔌 **插件生态** — 核心精简，能力通过插件扩展（V1.0）
+- 🔌 **插件生态** — 核心精简，能力通过插件扩展
 - 🏢 **企业级预留** — 可观测性、容错、安全边界等接口已预留
 
 ## 快速开始
@@ -52,10 +52,10 @@ const reviewer = agent({
 await reviewer.run("审查 src/ 目录");
 ```
 
-### 多 Agent 协作（V1.0 计划）
+### 多 Agent 协作
 
 ```typescript
-import { agent, team } from "dao";
+import { agent, team } from "dao-ai";
 
 const planner = agent({ role: "架构师", tools: [readFile] });
 const coder = agent({ role: "开发者", tools: [readFile, writeFile] });
@@ -95,7 +95,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 | -------- | -------------------------------------------------------------------- | --------- |
 | **V0.1** | agent + tool + Agent Loop + 模型层 + 基础 memory                     | ✅ 完成   |
 | **V0.5** | steps 引擎 + rules + 上下文压缩 + wait/resume                        | ✅ 完成   |
-| **V1.0** | team + plugins + 内置工具 + 完整文档                                 | 📋 计划   |
+| **V1.0** | team + plugins + 内置工具 + 完整文档                                 | ✅ 完成   |
 | **未来** | 可观测性 · 容错重试 · Fallback 模型 · 成本控制 · MCP 协议 · RAG 接入 | 🔮 预留   |
 
 ## 企业级能力预留
