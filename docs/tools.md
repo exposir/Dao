@@ -156,10 +156,12 @@ if (tool.confirm) {
 import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
 ```
 
-| 工具 | 描述 | confirm 默认值 |
+| 工具 | 描述 | confirm |
 |---|---|---|
 | `readFile` | 读取文件 | false |
-| `writeFile` | 写入文件 | true |
+| `writeFile` | 写入文件 | false |
 | `listDir` | 列出目录 | false |
-| `runCommand` | 执行命令 | true |
+| `runCommand` | 执行命令 | false |
 | `search` | 搜索文件内容 | false |
+
+> **注意**：confirm 机制尚未实现（设置 `confirm: true` 会报错）。`writeFile` 和 `runCommand` 等高风险操作目前无内置确认保护，建议通过插件的 `beforeToolCall` + `skip()` 实现审批逻辑。

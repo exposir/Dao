@@ -33,7 +33,7 @@ import { agent } from "./agent.js"
  * ```
  */
 export function team(options: TeamOptions): TeamInstance {
-  const { members, lead, strategy = "auto" } = options
+  const { members, lead, strategy = "auto", maxRounds, plugins } = options
 
   // 构建 member 描述，供 lead Agent 了解团队能力
   const memberDescriptions = Object.entries(members)
@@ -80,6 +80,8 @@ export function team(options: TeamOptions): TeamInstance {
   const leadAgent = lead ?? agent({
     role: "团队负责人",
     model: leadConfig.model ?? Object.values(members)[0]?.getConfig().model,
+    maxTurns: maxRounds,
+    plugins,
     systemPrompt:
       `你是团队负责人，负责分解任务并委派给合适的成员执行。\n` +
       `团队成员：\n${memberDescriptions}\n\n` +
@@ -94,6 +96,8 @@ export function team(options: TeamOptions): TeamInstance {
     // 重新创建 lead，注入 delegate 工具
     const enhancedLead = agent({
       ...config,
+      maxTurns: maxRounds ?? config.maxTurns,
+      plugins: plugins ? [...(config.plugins ?? []), ...plugins] : config.plugins,
       tools: [...(config.tools ?? []), delegateTool],
       systemPrompt:
         (config.systemPrompt ?? "") +
@@ -118,10 +122,18 @@ function createTeamInstance(
 
       const result = await leadAgent.run(task)
 
+      // 聚合 lead + 所有 member 的 token 用量
+      const allResults = Object.values(memberResults).flat()
+      const totalUsage = {
+        promptTokens: result.usage.promptTokens + allResults.reduce((s, r) => s + r.usage.promptTokens, 0),
+        completionTokens: result.usage.completionTokens + allResults.reduce((s, r) => s + r.usage.completionTokens, 0),
+        totalTokens: result.usage.totalTokens + allResults.reduce((s, r) => s + r.usage.totalTokens, 0),
+      }
+
       return {
         output: result.output,
         memberResults,
-        usage: result.usage,
+        usage: totalUsage,
         duration: Date.now() - startTime,
       }
     },
