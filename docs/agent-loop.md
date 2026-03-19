@@ -152,9 +152,6 @@ function getGracePrompt(currentTurn: number, maxTurns: number): string | null {
   ├─ 查找工具注册表
   │   └─ 找不到？→ 告诉 LLM 工具不存在
   │
-  ├─ rules.reject 检查
-  │   └─ 被拒绝？→ 告诉 LLM 该操作被禁止
-  │
   ├─ confirm: true？
   │   └─ 等待用户确认
   │       ├─ 确认 → 继续
@@ -170,6 +167,8 @@ function getGracePrompt(currentTurn: number, maxTurns: number): string | null {
   │
   └─ 回到 Agent Loop（带上 tool_result）
 ```
+
+> **注意**：`rules.reject` 通过 system prompt 注入实现（见第 3 节），不在工具调用层做硬拦截。
 
 ---
 

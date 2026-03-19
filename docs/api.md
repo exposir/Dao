@@ -352,6 +352,30 @@ const deleteFiles = tool({
 
 > 不需要 Zod。所有 API 统一传一个对象。
 
+### ToolInstance
+
+```typescript
+interface ToolInstance {
+  __type: "tool"
+  name: string
+  description: string
+  schema: JSONSchema
+  execute: (params: any) => Promise<any>
+  confirm: boolean
+}
+```
+
+### ToolContext
+
+```typescript
+interface ToolContext {
+  /** 当前 Agent 实例 */
+  agent: AgentInstance
+  /** 中止执行 */
+  abort: (reason?: string) => void
+}
+```
+
 ---
 
 ## 4. plugin(options) → PluginInstance
