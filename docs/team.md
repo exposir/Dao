@@ -23,7 +23,7 @@ team.run("任务")
 当用户不指定 `lead` 时，框架自动生成：
 
 ```typescript
-function createAutoLead(members: Record<string, AgentInstance>): AgentInstance {
+function createAutoLead(members: Record<string, AgentInstance>, maxRounds: number): AgentInstance {
   // 1. 收集所有成员信息
   const memberDescriptions = Object.entries(members)
     .map(([name, member]) => {
@@ -111,20 +111,30 @@ planner.run("分析需求")
 
 ```typescript
 async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResult> {
-  const { lead, members, maxRounds = 20 } = options
+  const { lead, members, maxRounds = 20, plugins = [] } = options
 
-  // 1. 创建或使用 lead
-  const leadAgent = lead || createAutoLead(members)
-
-  // 2. 注入 delegate 工具（如果是自定义 lead）
+  // 1. 创建 lead（自动生成时直接设 maxTurns）
+  let leadAgent: AgentInstance
   if (lead) {
-    injectDelegateTools(leadAgent, members)
+    // 自定义 lead：clone 配置 + 注入 delegate 工具 + 设 maxTurns
+    const config = lead.getConfig()
+    leadAgent = agent({
+      ...config,
+      maxTurns: maxRounds,
+      tools: [...(config.tools || []), ...createDelegateTools(members)],
+    })
+  } else {
+    // 自动生成 lead：maxTurns 直接设为 maxRounds
+    leadAgent = createAutoLead(members, maxRounds)
   }
 
-  // 3. 将 maxRounds 设为 lead 的 maxTurns
-  leadAgent.options.maxTurns = maxRounds
+  // 2. 注入团队级插件（挂在 lead 上，监控整个团队执行过程）
+  // member 的插件由 member 自己管理，team plugins 不会注入到 member
+  if (plugins.length) {
+    leadAgent = agent({ ...leadAgent.getConfig(), plugins: [...(leadAgent.getConfig().plugins || []), ...plugins] })
+  }
 
-  // 4. 执行 lead
+  // 3. 执行 lead
   const result = await leadAgent.run(task)
 
   // 4. 收集成员执行记录

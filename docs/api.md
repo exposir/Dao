@@ -444,6 +444,17 @@ interface HookContext {
 }
 ```
 
+### PluginInstance
+
+```typescript
+interface PluginInstance {
+  __type: "plugin"
+  name: string
+  setup?: (agent: AgentInstance) => void | Promise<void>
+  hooks: PluginOptions["hooks"]
+}
+```
+
 ---
 
 ## 5. 全局配置
@@ -451,27 +462,27 @@ interface HookContext {
 ```typescript
 import { configure } from "dao"
 
-configure({
+function configure(options: ConfigOptions): void
+
+interface ConfigOptions {
   /** 默认模型（所有 agent 不指定 model 时使用） */
-  defaultModel: "deepseek/deepseek-chat",
+  defaultModel?: string
 
   /**
    * 默认最大轮次
    * @default 50
    */
-  defaultMaxTurns: 50,
+  defaultMaxTurns?: number
 
   /**
    * 默认是否开启流式
    * @default true
    */
-  defaultStream: true,
+  defaultStream?: boolean
 
-  /**
-   * 全局插件（所有 agent 自动加载）
-   */
-  globalPlugins: [logger()],
-})
+  /** 全局插件（所有 agent 自动加载） */
+  globalPlugins?: PluginInstance[]
+}
 ```
 
 ---
@@ -485,6 +496,7 @@ export { team } from "./team"
 export { tool } from "./tool"
 export { plugin } from "./plugin"
 export { configure } from "./config"
+export { registerProvider } from "./model"
 
 // dao/tools 内置工具
 export { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
