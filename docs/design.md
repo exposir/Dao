@@ -394,7 +394,7 @@ const bot = agent({ plugins: [logger()] })
 | | **Dao** | **Mastra** | **Vercel AI SDK** | **LangGraph** | **VoltAgent** | **easy-agent** |
 |---|---|---|---|---|---|---|
 | 语言 | TypeScript | TypeScript | TypeScript | TypeScript | TypeScript | TypeScript |
-| 中文文档 | ✅ 优先 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 直觉优先 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | API 范式 | 描述角色 | 配置基础设施 | 函数调用 | 画图 | 声明式 | 极简类 |
 | 上手时间 | 5 分钟 | 30+ 分钟 | 10 分钟 | 60+ 分钟 | 15 分钟 | 5 分钟 |
 | 多 Agent | `team()` | Network | ❌ 自己写 | Graph | supervisor | ❌ |
