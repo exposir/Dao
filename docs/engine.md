@@ -223,3 +223,42 @@ steps: [
   "启动服务",
 ]
 ```
+
+---
+
+## 8. 计划中的能力
+
+以下功能尚未实现，API 设计可能调整。
+
+### 8.1 输出预期（expected_output）
+
+告诉 LLM **应该输出什么格式**，而不仅仅是做什么：
+
+```typescript
+steps: [
+  { task: "分析市场趋势", output: "500 字分析报告，包含数据来源和结论" },
+  { task: "生成摘要", output: "3 条要点，每条不超过 50 字" },
+]
+```
+
+引擎会将 `output` 拼入 prompt：`"请完成以下任务：{task}。期望输出：{output}"`。
+
+### 8.2 输出校验（guardrail）
+
+代码级别的结果校验，比 `rules.reject`（prompt 注入）更可靠：
+
+```typescript
+steps: [
+  {
+    task: "生成 JSON 报告",
+    validate: (result) => {
+      try { JSON.parse(result); return true }
+      catch { return "输出不是合法 JSON，请重新生成" }
+    },
+    maxRetries: 3,  // 校验失败自动重试，最多 3 次
+  },
+]
+```
+
+- 返回 `true`：通过，进入下一步
+- 返回字符串：失败原因，作为反馈发给 LLM 重新生成

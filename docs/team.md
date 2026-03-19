@@ -175,3 +175,27 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 | Lead 达到 maxRounds | Grace Period → 强制汇总已有结果 |
 | 成员超时 | 返回超时信息给 lead |
 | 所有成员都失败 | lead 汇总错误信息输出 |
+
+---
+
+## 8. 计划中的能力
+
+以下功能尚未实现，API 设计可能调整。
+
+### 8.1 Agent 级委派（allow_delegation）
+
+当前委派只能在 `team()` 内通过 lead 使用 delegate 工具。计划支持单个 agent 直接委派任务给其他 agent，无需显式组建团队：
+
+```typescript
+const researcher = agent({ role: "研究员" })
+const writer = agent({ role: "写手" })
+
+const lead = agent({
+  role: "项目经理",
+  delegates: { researcher, writer },  // 自动注入 delegate 工具
+})
+
+await lead.run("写一篇关于 AI 的文章")
+// lead 可以自主委派子任务给 researcher 和 writer
+```
+

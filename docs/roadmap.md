@@ -32,13 +32,16 @@
 
 ## V1.1 🚧 生产可用
 
-> 重试 + 超时 + 错误分类 + 成本安全 + 并发控制
+> 重试 + 超时 + 错误分类 + 成本安全 + 并发控制 + prompt 增强 + 输出校验
 
 - [ ] 模型调用自动重试（指数退避 + 429 自动等待）
 - [ ] 超时控制（`timeout` 参数 + AbortController）
 - [ ] 错误分类（ModelError / ToolError / TimeoutError）
 - [ ] `maxTokens` 上限
 - [ ] `parallel` 并发限制（`concurrency` 参数）
+- [ ] 步骤输出预期（`expected_output`，拼入 prompt 引导 LLM 输出格式）
+- [ ] 步骤输出校验（`guardrail`，代码级 validate + 校验失败自动重试）
+- [ ] `goal` + `background` 字段（简单模式 prompt 拼接，`systemPrompt` 为专家覆盖）
 
 ## V2.0 📋 企业级
 
@@ -53,5 +56,6 @@
 - [ ] 完整流式事件（step_start / step_end / tool_call / delegate）
 - [ ] 可测试性（mock 模型注入 + 响应录制/回放）
 - [ ] MCP 协议支持
+- [ ] Agent 级委派（`allow_delegation`，无需 team 即可跨 agent 协作）
 
 > **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。

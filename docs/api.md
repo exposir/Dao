@@ -17,15 +17,22 @@ import { agent } from "dao-ai"
 const bot = agent({ model: "deepseek/deepseek-chat" })
 await bot.chat("你好")
 
-// 完整用法
+// 简单模式：role + goal + background → 框架自动拼 prompt
 const reviewer = agent({
   role: "代码审查员",
+  goal: "找出代码中的 bug 和安全隐患",
+  background: "你有 10 年 TypeScript 经验，熟悉常见安全漏洞",
   model: "deepseek/deepseek-chat",
   tools: [readFile, listDir],
-  steps: ["了解项目结构", "分析代码", "生成报告"],
-  rules: { focus: ["代码质量"], reject: ["修改代码"] },
-  memory: true,
 })
+
+// 专家模式：systemPrompt 完全自定义，覆盖 role/goal/background
+const expert = agent({
+  systemPrompt: "你是一个严格的代码审计工具，只输出 JSON 格式的审计报告...",
+  model: "deepseek/deepseek-chat",
+  tools: [readFile, listDir],
+})
+
 const result = await reviewer.run("审查 src/ 目录")
 console.log(result.output)
 ```
@@ -36,6 +43,12 @@ console.log(result.output)
 interface AgentOptions {
   /** 角色描述，会被注入到 system prompt 中 */
   role?: string
+
+  /** 目标：告诉 LLM 它要完成什么（可选，拼入 prompt） */
+  goal?: string
+
+  /** 背景：告诉 LLM 它为什么能完成（可选，拼入 prompt） */
+  background?: string
 
   /** 模型，格式为 "provider/model" */
   model?: string
@@ -85,8 +98,8 @@ interface AgentOptions {
   temperature?: number
 
   /**
-   * system prompt 前缀，会拼接在 role 之前
-   * 用于注入全局指令
+   * 完全自定义 system prompt（专家模式）
+   * 提供此参数时，忽略 role / goal / background 的自动拼接
    */
   systemPrompt?: string
 
