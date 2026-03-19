@@ -14,6 +14,7 @@ import type { ModelMessage, ToolSet } from "ai"
 import type {
   AgentOptions,
   ToolInstance,
+  ToolContext,
   RunResult,
   RunEvent,
   TokenUsage,
@@ -35,7 +36,12 @@ function toAITools(tools: ToolInstance[]): ToolSet {
         additionalProperties: false,
       }),
       execute: async (params: any) => {
-        const output = await t.execute(params)
+        // 注入 ToolContext（V0.1 占位，V0.5 完善 abort 逻辑）
+        const ctx: ToolContext = {
+          agent: null as any,
+          abort: () => { throw new Error("工具中止执行") },
+        }
+        const output = await t.execute(params, ctx)
         return typeof output === "string" ? output : JSON.stringify(output)
       },
     } as any
@@ -101,6 +107,7 @@ export async function runLoop(
     system: systemPrompt || undefined,
     messages,
     tools,
+    temperature: options.temperature,
     stopWhen: stepCountIs(maxTurns),
     providerOptions: {
       openai: { strictJsonSchema: false },
@@ -114,15 +121,15 @@ export async function runLoop(
     totalTokens: (result.totalUsage?.inputTokens ?? 0) + (result.totalUsage?.outputTokens ?? 0),
   }
 
-  // 收集步骤记录
-  const stepResults = result.steps?.map((step, i) => ({
-    step: `turn-${i + 1}`,
+  // 收集轮次记录
+  const turnResults = result.steps?.map((step, i) => ({
+    turn: `turn-${i + 1}`,
     result: step.text || null,
   })) ?? []
 
   return {
     output: result.text,
-    steps: stepResults,
+    turns: turnResults,
     usage,
     duration: Date.now() - startTime,
   }
@@ -158,6 +165,7 @@ export async function* runLoopStream(
     system: systemPrompt || undefined,
     messages,
     tools,
+    temperature: options.temperature,
     stopWhen: stepCountIs(maxTurns),
   })
 

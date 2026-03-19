@@ -181,8 +181,8 @@ export interface AgentInstance {
 export interface RunResult {
   /** 最终输出文本 */
   output: string
-  /** 执行的步骤记录 */
-  steps: { step: Step; result: any }[]
+  /** 模型调用轮次记录 */
+  turns: { turn: string; result: any }[]
   /** 使用的 token 数 */
   usage: TokenUsage
   /** 执行耗时（毫秒） */

@@ -29,6 +29,14 @@ import { runLoop, runLoopStream } from "./loop.js"
  * ```
  */
 export function agent(options: AgentOptions): AgentInstance {
+  // V0.1 不支持 steps，提前报错避免静默忽略
+  if (options.steps?.length) {
+    throw new Error(
+      "steps 功能将在 V0.5 支持。" +
+      "V0.1 请使用 chat() 或 run() 直接与模型对话。"
+    )
+  }
+
   // 对话历史（memory 用）
   let messageHistory: ModelMessage[] = []
 
@@ -53,14 +61,21 @@ export function agent(options: AgentOptions): AgentInstance {
     },
 
     async *chatStream(message: string): AsyncIterable<string> {
+      let fullText = ""
       for await (const event of runLoopStream(options, message, messageHistory)) {
         if (event.type === "text") {
+          fullText += event.data
           yield event.data
         }
       }
 
-      // 流式模式下也保存记忆（收集完整输出后）
-      // 注意：简化处理，流式模式下暂不保存记忆
+      // 流式结束后保存记忆，与 chat() 行为一致
+      if (options.memory) {
+        messageHistory.push(
+          { role: "user", content: message },
+          { role: "assistant", content: fullText },
+        )
+      }
     },
 
     async *runStream(task: string): AsyncIterable<RunEvent> {
