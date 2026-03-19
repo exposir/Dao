@@ -87,7 +87,7 @@ function buildSystemPrompt(options: AgentOptions, context?: string): string {
 | 循环 | 单轮（通常 1 次模型调用） | 多轮（直到任务完成） |
 | 工具调用 | 支持 | 支持 |
 | 上下文保持 | 保持完整对话历史 | 每次 run 是独立的 |
-| steps | 不触发 | 触发 Steps 引擎 |
+| steps | 不触发 | V0.5 计划支持 |
 | 完成判断 | 模型回复后就结束 | LLM 主动标记或用完 maxTurns |
 
 **chat 流程**：
@@ -101,9 +101,8 @@ function buildSystemPrompt(options: AgentOptions, context?: string): string {
 
 **run 流程**：
 ```
-任务描述 → 有 steps？
-             ├─ 有 → Steps 引擎驱动（每步调用 Agent Loop）
-             └─ 没有 → Agent Loop 自主循环直到完成
+任务描述 → Agent Loop 自主循环直到完成
+          （V0.5 计划支持 steps 引擎驱动）
 ```
 
 ---
@@ -193,12 +192,13 @@ const result = streamText({
 for await (const event of agent.runStream("任务")) {
   switch (event.type) {
     case "text":        // 文本片段
-    case "tool_call":   // 即将调用工具
-    case "tool_result": // 工具执行结果
-    case "step_start":  // Steps 引擎：开始新步骤
-    case "step_end":    // Steps 引擎：步骤完成
-    case "error":       // 错误
     case "done":        // 全部完成
+    // V0.5 计划支持：
+    // case "tool_call":   // 即将调用工具
+    // case "tool_result": // 工具执行结果
+    // case "step_start":  // Steps 引擎：开始新步骤
+    // case "step_end":    // Steps 引擎：步骤完成
+    // case "error":       // 错误
   }
 }
 ```

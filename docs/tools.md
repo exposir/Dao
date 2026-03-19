@@ -148,12 +148,13 @@ if (tool.confirm) {
 
 ---
 
-## 4. 内置工具
+## 4. 内置工具（V1.0 计划）
 
-Dao 提供常用工具，通过 `dao/tools` 导入：
+> ⚠️ 以下内置工具计划在 V1.0 实现，当前版本不可用。V0.1 请自行定义工具。
 
 ```typescript
-import { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
+// V1.0 计划
+// import { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
 ```
 
 | 工具 | 描述 | confirm 默认值 |

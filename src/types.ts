@@ -114,8 +114,6 @@ export interface AgentOptions {
   model?: string
   /** 可用工具列表 */
   tools?: ToolInstance[]
-  /** 步骤列表 */
-  steps?: Step[]
   /** 规则约束 */
   rules?: {
     focus?: string[]
@@ -126,18 +124,11 @@ export interface AgentOptions {
    * @default false
    */
   memory?: boolean
-  /** 插件列表 */
-  plugins?: PluginInstance[]
   /**
    * 最大执行轮次
    * @default 50
    */
   maxTurns?: number
-  /**
-   * 是否开启流式输出
-   * @default true
-   */
-  stream?: boolean
   /**
    * 温度参数
    * @default undefined（使用模型默认值）
@@ -148,16 +139,22 @@ export interface AgentOptions {
 
   // === 预留扩展点（V0.1 不实现） ===
 
-  /** 工具确认回调（预留） */
+  /** 步骤列表 @planned V0.5 */
+  steps?: Step[]
+  /** 插件列表 @planned V1.0 */
+  plugins?: PluginInstance[]
+  /** 是否开启流式输出 @planned V0.5 */
+  stream?: boolean
+  /** 工具确认回调 @planned V0.5 */
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
-  /** 备用模型（预留） */
+  /** 备用模型 @planned V1.0 */
   fallbackModel?: string
-  /** 上下文窗口配置（预留） */
+  /** 上下文窗口配置 @planned V1.0 */
   contextWindow?: {
     maxTokens?: number
     strategy?: "truncate" | "summarize"
   }
-  /** 自定义模型提供者（预留） */
+  /** 自定义模型提供者（测试注入 mock） */
   modelProvider?: LanguageModel
 }
 
@@ -196,9 +193,9 @@ export interface TokenUsage {
   totalTokens: number
 }
 
-/** 流式事件 */
+/** 流式事件（V0.1 仅支持 text 和 done） */
 export interface RunEvent {
-  type: "text" | "tool_call" | "tool_result" | "step_start" | "step_end" | "error" | "done"
+  type: "text" | "done"
   data: any
 }
 
@@ -304,27 +301,24 @@ export interface ConfigOptions {
    * @default 50
    */
   defaultMaxTurns?: number
-  /**
-   * 默认是否开启流式
-   * @default true
-   */
-  defaultStream?: boolean
-  /** 全局插件 */
-  globalPlugins?: PluginInstance[]
 
   // === 预留扩展点（V0.1 不实现） ===
 
-  /** 模型调用重试配置（预留） */
+  /** 默认是否开启流式 @planned V0.5 */
+  defaultStream?: boolean
+  /** 全局插件 @planned V1.0 */
+  globalPlugins?: PluginInstance[]
+  /** 模型调用重试配置 @planned V1.0 */
   retry?: {
     maxRetries?: number
     backoff?: boolean
   }
-  /** 可观测性配置（预留） */
+  /** 可观测性配置 @planned V1.0 */
   telemetry?: {
     enabled?: boolean
     exporter?: (event: any) => void
   }
-  /** 成本上限（预留） */
+  /** 成本上限 @planned V1.0 */
   maxCostPerRun?: number
 }
 

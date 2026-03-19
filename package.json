@@ -10,9 +10,7 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "_comment_tools": "V1.0 计划: ./tools -> ./dist/tools/index.js",
-    "_comment_plugins": "V1.0 计划: ./plugins -> ./dist/plugins/index.js"
+    }
   },
   "files": [
     "dist"
@@ -21,7 +19,6 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
-    "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
