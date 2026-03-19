@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { team } from "../src/team.js"
 import { agent } from "../src/agent.js"
-import type { AgentInstance } from "../src/types.js"
+import type { AgentInstance } from "../src/core/types.js"
 
 // mock agent
 function mockMember(role: string): AgentInstance {

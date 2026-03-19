@@ -15,7 +15,7 @@ import type {
   StepContext,
   AgentInstance,
   RunResult,
-} from "./types.js"
+} from "./core/types.js"
 
 /** 步骤执行结果 */
 export interface StepResult {

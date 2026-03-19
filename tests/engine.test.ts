@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 import { runSteps, AbortError } from "../src/engine.js"
-import type { AgentInstance, StepContext } from "../src/types.js"
+import type { AgentInstance, StepContext } from "../src/core/types.js"
 
 // mock agent
 function mockAgent(): AgentInstance {

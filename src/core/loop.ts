@@ -22,8 +22,8 @@ import type {
 } from "./types.js"
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
-import { compileRules } from "./rules.js"
-import type { PluginManager } from "./plugin.js"
+import { compileRules } from "../rules.js"
+import type { PluginManager } from "../plugin.js"
 
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
 function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: PluginManager): ToolSet {

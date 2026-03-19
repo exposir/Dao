@@ -11,7 +11,7 @@ import type {
   ParamsDef,
   ParamSpec,
   JSONSchema,
-} from "./types.js"
+} from "./core/types.js"
 
 /**
  * 创建一个工具实例

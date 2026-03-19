@@ -12,7 +12,7 @@ import type {
   TeamRunEvent,
   AgentInstance,
   RunResult,
-} from "./types.js"
+} from "./core/types.js"
 import { tool } from "./tool.js"
 import { agent } from "./agent.js"
 

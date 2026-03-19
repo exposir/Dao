@@ -11,7 +11,7 @@ import type {
   PluginHooks,
   HookContext,
   AgentInstance,
-} from "./types.js"
+} from "./core/types.js"
 
 /**
  * 创建一个插件实例

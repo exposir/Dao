@@ -7,8 +7,8 @@
 // 核心函数
 export { agent } from "./agent.js"
 export { tool } from "./tool.js"
-export { configure } from "./config.js"
-export { registerProvider } from "./model.js"
+export { configure } from "./core/config.js"
+export { registerProvider } from "./core/model.js"
 export { compileRules } from "./rules.js"
 export { AbortError } from "./engine.js"
 export { plugin, logger } from "./plugin.js"
@@ -48,4 +48,4 @@ export type {
   ConfigOptions,
   // Model
   ProviderEntry,
-} from "./types.js"
+} from "./core/types.js"

@@ -5,8 +5,8 @@
  */
 
 import type { ModelMessage } from "ai"
-import type { AgentOptions, AgentInstance, RunResult, RunEvent } from "./types.js"
-import { runLoop, runLoopStream } from "./loop.js"
+import type { AgentOptions, AgentInstance, RunResult, RunEvent } from "./core/types.js"
+import { runLoop, runLoopStream } from "./core/loop.js"
 import { runSteps } from "./engine.js"
 import { PluginManager } from "./plugin.js"
 

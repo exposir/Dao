@@ -5,7 +5,7 @@
  * V0.5 实现：智能 prompt 注入，不再硬编码在 loop.ts 的 buildSystemPrompt 中。
  */
 
-import type { AgentOptions } from "./types.js"
+import type { AgentOptions } from "./core/types.js"
 
 /**
  * 将 rules 编译为 system prompt 片段
