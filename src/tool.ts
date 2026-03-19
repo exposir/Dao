@@ -29,11 +29,11 @@ import type {
 export function tool(options: ToolOptions): ToolInstance {
   const { name, description, params, run, confirm = false } = options
 
-  // V0.1 不支持 confirm，提前报错避免安全假象
+  // confirm 机制尚未实现，提前报错避免安全假象
   if (confirm) {
     throw new Error(
-      `工具 "${name}" 设置了 confirm: true，但确认功能将在 V0.5 支持。` +
-      `V0.1 请移除 confirm 或自行在 run() 中实现确认逻辑。`
+      `工具 "${name}" 设置了 confirm: true，但确认功能尚未实现。` +
+      `请移除 confirm 或自行在 run() 中实现确认逻辑。`
     )
   }
 

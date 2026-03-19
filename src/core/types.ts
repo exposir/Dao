@@ -114,7 +114,7 @@ export interface AgentOptions {
   model?: string
   /** 可用工具列表 */
   tools?: ToolInstance[]
-  /** 步骤列表（V0.5） */
+  /** 步骤列表 */
   steps?: Step[]
   /** 规则约束 */
   rules?: {
@@ -141,7 +141,7 @@ export interface AgentOptions {
 
   // === 预留扩展点 ===
 
-  /** 插件列表 @planned V1.0 */
+  /** 插件列表 */
   plugins?: PluginInstance[]
   /** 是否开启流式输出 @planned V1.0 */
   stream?: boolean
@@ -305,7 +305,7 @@ export interface ConfigOptions {
    */
   defaultMaxTurns?: number
 
-  // === 预留扩展点（V0.1 不实现） ===
+  // === 预留扩展点 ===
 
   /** 默认是否开启流式 @planned V1.0 */
   defaultStream?: boolean

@@ -15,7 +15,7 @@ Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。基于 Ver
 ## 快速开始
 
 ```typescript
-import { agent } from "dao";
+import { agent } from "dao-ai";
 
 const bot = agent({ model: "deepseek/deepseek-chat" });
 await bot.chat("你好");
@@ -100,7 +100,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 ## 企业级能力预留
 
-API 已为以下能力预留扩展点，V0.1 不实现，未来按需激活：
+API 已为以下能力预留扩展点，未来按需激活：
 
 ```typescript
 agent({

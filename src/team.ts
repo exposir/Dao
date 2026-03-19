@@ -11,7 +11,6 @@ import type {
   TeamRunResult,
   TeamRunEvent,
   AgentInstance,
-  RunResult,
 } from "./core/types.js"
 import { tool } from "./tool.js"
 import { agent } from "./agent.js"
