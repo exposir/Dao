@@ -100,8 +100,26 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
  * 并行执行多个子步骤
  */
 async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any[]> {
-  const tasks = step.parallel.map(subStep => executeStep(subStep as Step, ctx, executeTask))
-  return await Promise.all(tasks)
+  const concurrency = step.concurrency ?? Infinity
+  const tasks = step.parallel
+
+  if (concurrency >= tasks.length) {
+    // 无限制，全部并行
+    return await Promise.all(
+      tasks.map(subStep => executeStep(subStep as Step, ctx, executeTask))
+    )
+  }
+
+  // 分批执行，同时最多 concurrency 个
+  const results: any[] = []
+  for (let i = 0; i < tasks.length; i += concurrency) {
+    const batch = tasks.slice(i, i + concurrency)
+    const batchResults = await Promise.all(
+      batch.map(subStep => executeStep(subStep as Step, ctx, executeTask))
+    )
+    results.push(...batchResults)
+  }
+  return results
 }
 
 /**

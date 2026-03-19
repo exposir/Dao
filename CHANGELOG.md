@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 (2026-03-20)
+
+### Features
+
+- **retry**: 模型调用自动重试，支持指数退避 + 429 rate limit 自动等待（`agent({ retry: { maxRetries: 3 } })`）
+- **timeout**: 超时控制，超时抛出 `TimeoutError`（`agent({ timeout: 30000 })`）
+- **errors**: 错误分类体系 — `DaoError` 基类 + `ModelError` / `ToolError` / `TimeoutError`，支持 `instanceof` 区分
+- **maxTokens**: 限制单次模型调用最大输出 token 数（`agent({ maxTokens: 1000 })`）
+- **concurrency**: parallel 步骤并发控制（`{ parallel: [...], concurrency: 3 }`）
+
 ## 1.0.1 (2026-03-20)
 
 ### Bug Fixes

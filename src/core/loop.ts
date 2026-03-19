@@ -23,6 +23,7 @@ import type {
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
 import { compileRules } from "../rules.js"
+import { ModelError, ToolError, TimeoutError } from "./errors.js"
 import type { PluginManager } from "../plugin.js"
 
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
@@ -44,19 +45,32 @@ function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: Plu
           if (skipped) return "[工具调用被插件跳过]"
         }
 
-        const ctx: ToolContext = {
-          agent: agentInstance,
-          abort: () => { throw new Error("工具中止执行") },
-        }
-        const output = await t.execute(params, ctx)
-        const result = typeof output === "string" ? output : JSON.stringify(output)
+        try {
+          const ctx: ToolContext = {
+            agent: agentInstance,
+            abort: () => { throw new Error("工具中止执行") },
+          }
+          const output = await t.execute(params, ctx)
+          const result = typeof output === "string" ? output : JSON.stringify(output)
 
-        // 触发 afterToolCall hook
-        if (pm) {
-          await pm.emit("afterToolCall", agentInstance, { tool: t.name, result })
-        }
+          // 触发 afterToolCall hook
+          if (pm) {
+            await pm.emit("afterToolCall", agentInstance, { tool: t.name, result })
+          }
 
-        return result
+          return result
+        } catch (err: any) {
+          // 包装为 ToolError（但不阻断 Agent Loop，返回错误信息让 LLM 处理）
+          const toolErr = err instanceof ToolError
+            ? err
+            : new ToolError(`工具 "${t.name}" 执行失败：${err.message}`, t.name, err)
+
+          if (pm) {
+            await pm.emit("afterToolCall", agentInstance, { tool: t.name, result: toolErr.message })
+          }
+
+          return toolErr.message
+        }
       },
     } as any
   }
@@ -117,49 +131,81 @@ export async function runLoop(
 
   const startTime = Date.now()
 
+  // 超时控制
+  let controller: AbortController | undefined
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  if (options.timeout) {
+    controller = new AbortController()
+    timeoutId = setTimeout(() => controller!.abort(), options.timeout)
+  }
+
   // 触发 beforeModelCall hook
   if (pm) {
     const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
     if (skipped) {
+      if (timeoutId) clearTimeout(timeoutId)
       return { output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
     }
   }
 
-  const result = await generateText({
-    model,
-    system: systemPrompt || undefined,
-    messages,
-    tools,
-    temperature: options.temperature,
-    stopWhen: stepCountIs(maxTurns),
-    providerOptions: {
-      openai: { strictJsonSchema: false },
-    },
-  })
+  try {
+    const result = await generateText({
+      model,
+      system: systemPrompt || undefined,
+      messages,
+      tools,
+      temperature: options.temperature,
+      maxOutputTokens: options.maxTokens,
+      maxRetries: options.retry?.maxRetries ?? 2,
+      abortSignal: controller?.signal,
+      stopWhen: stepCountIs(maxTurns),
+      providerOptions: {
+        openai: { strictJsonSchema: false },
+      },
+    })
 
-  // 触发 afterModelCall hook
-  if (pm) {
-    await pm.emit("afterModelCall", agentInstance, { response: result.text })
-  }
+    if (timeoutId) clearTimeout(timeoutId)
 
-  // 提取 token 用量
-  const usage: TokenUsage = {
-    promptTokens: result.totalUsage?.inputTokens ?? 0,
-    completionTokens: result.totalUsage?.outputTokens ?? 0,
-    totalTokens: (result.totalUsage?.inputTokens ?? 0) + (result.totalUsage?.outputTokens ?? 0),
-  }
+    // 触发 afterModelCall hook
+    if (pm) {
+      await pm.emit("afterModelCall", agentInstance, { response: result.text })
+    }
 
-  // 收集轮次记录
-  const turnResults = result.steps?.map((step, i) => ({
-    turn: `turn-${i + 1}`,
-    result: step.text || null,
-  })) ?? []
+    // 提取 token 用量
+    const usage: TokenUsage = {
+      promptTokens: result.totalUsage?.inputTokens ?? 0,
+      completionTokens: result.totalUsage?.outputTokens ?? 0,
+      totalTokens: (result.totalUsage?.inputTokens ?? 0) + (result.totalUsage?.outputTokens ?? 0),
+    }
 
-  return {
-    output: result.text,
-    turns: turnResults,
-    usage,
-    duration: Date.now() - startTime,
+    // 收集轮次记录
+    const turnResults = result.steps?.map((step, i) => ({
+      turn: `turn-${i + 1}`,
+      result: step.text || null,
+    })) ?? []
+
+    return {
+      output: result.text,
+      turns: turnResults,
+      usage,
+      duration: Date.now() - startTime,
+    }
+  } catch (err: any) {
+    if (timeoutId) clearTimeout(timeoutId)
+
+    // 超时检测
+    if (controller?.signal?.aborted || err?.name === "AbortError") {
+      throw new TimeoutError(
+        `模型调用超时（${options.timeout}ms）`,
+        options.timeout!,
+      )
+    }
+
+    // 包装为 ModelError
+    throw new ModelError(
+      `模型调用失败：${err.message}`,
+      err,
+    )
   }
 }
 
@@ -189,18 +235,46 @@ export async function* runLoopStream(
     { role: "user", content: task },
   ]
 
-  const result = streamText({
-    model,
-    system: systemPrompt || undefined,
-    messages,
-    tools,
-    temperature: options.temperature,
-    stopWhen: stepCountIs(maxTurns),
-  })
-
-  for await (const part of result.textStream) {
-    yield { type: "text", data: part }
+  // 超时控制
+  let controller: AbortController | undefined
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  if (options.timeout) {
+    controller = new AbortController()
+    timeoutId = setTimeout(() => controller!.abort(), options.timeout)
   }
 
-  yield { type: "done", data: null }
+  try {
+    const result = streamText({
+      model,
+      system: systemPrompt || undefined,
+      messages,
+      tools,
+      temperature: options.temperature,
+      maxOutputTokens: options.maxTokens,
+      maxRetries: options.retry?.maxRetries ?? 2,
+      abortSignal: controller?.signal,
+      stopWhen: stepCountIs(maxTurns),
+    })
+
+    for await (const part of result.textStream) {
+      yield { type: "text", data: part }
+    }
+
+    if (timeoutId) clearTimeout(timeoutId)
+    yield { type: "done", data: null }
+  } catch (err: any) {
+    if (timeoutId) clearTimeout(timeoutId)
+
+    if (controller?.signal?.aborted || err?.name === "AbortError") {
+      throw new TimeoutError(
+        `流式调用超时（${options.timeout}ms）`,
+        options.timeout!,
+      )
+    }
+
+    throw new ModelError(
+      `流式调用失败：${err.message}`,
+      err,
+    )
+  }
 }

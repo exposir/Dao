@@ -30,15 +30,15 @@
 - [x] 内置工具可用（readFile / writeFile / listDir / runCommand / search）
 - [x] 中文文档
 
-## V1.1 🚧 不挂
+## V1.1 ✅ 不挂
 
 > 重试 + 超时 + 错误分类 + 成本安全 + 并发控制
 
-- [ ] 模型调用自动重试（指数退避 + 429 自动等待）
-- [ ] 超时控制（`timeout` 参数 + AbortController）
-- [ ] 错误分类（ModelError / ToolError / TimeoutError）
-- [ ] `maxTokens` 上限
-- [ ] `parallel` 并发限制（`concurrency` 参数）
+- [x] 模型调用自动重试（指数退避 + 429 自动等待）
+- [x] 超时控制（`timeout` 参数 + AbortController）
+- [x] 错误分类（ModelError / ToolError / TimeoutError）
+- [x] `maxTokens` 上限
+- [x] `parallel` 并发限制（`concurrency` 参数）
 
 ## V1.2 📋 更好用
 

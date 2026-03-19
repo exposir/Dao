@@ -11,6 +11,7 @@ export { configure } from "./core/config.js"
 export { registerProvider } from "./core/model.js"
 export { compileRules } from "./rules.js"
 export { AbortError } from "./engine.js"
+export { DaoError, ModelError, ToolError, TimeoutError } from "./core/errors.js"
 export { plugin, logger } from "./plugin.js"
 export { team } from "./team.js"
 

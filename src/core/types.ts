@@ -79,6 +79,8 @@ export type Step =
 
 export interface ParallelStep {
   parallel: (string | Step | (() => Promise<any>))[]
+  /** 并发限制，默认不限 */
+  concurrency?: number
 }
 
 export interface ConditionalStep {
@@ -136,20 +138,44 @@ export interface AgentOptions {
    * @default undefined（使用模型默认值）
    */
   temperature?: number
-  /** system prompt 前缀 */
+  /**
+   * 完全自定义 system prompt（专家模式）
+   * 提供此参数时，忽略 role / goal / background 的自动拼接
+   */
   systemPrompt?: string
-
-  // === 预留扩展点 ===
 
   /** 插件列表 */
   plugins?: PluginInstance[]
-  /** 是否开启流式输出 @planned V1.0 */
+
+  // === V1.1：生产可靠性 ===
+
+  /**
+   * 重试配置
+   * AI SDK 内置指数退避和 429 自动等待
+   * @default { maxRetries: 2 }
+   */
+  retry?: {
+    maxRetries?: number
+  }
+  /**
+   * 超时时间（毫秒）
+   * 超时后抛出 TimeoutError
+   */
+  timeout?: number
+  /**
+   * 单次模型调用的最大 token 数
+   */
+  maxTokens?: number
+
+  // === 预留扩展点 ===
+
+  /** 是否开启流式输出 */
   stream?: boolean
-  /** 工具确认回调 @planned V1.0 */
+  /** 工具确认回调 @planned V2.0 */
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
-  /** 备用模型 @planned V1.0 */
+  /** 备用模型 @planned V2.0 */
   fallbackModel?: string
-  /** 上下文窗口配置 @planned V1.0 */
+  /** 上下文窗口配置 @planned V2.0 */
   contextWindow?: {
     maxTokens?: number
     strategy?: "truncate" | "summarize"
@@ -313,21 +339,16 @@ export interface ConfigOptions {
 
   // === 预留扩展点 ===
 
-  /** 默认是否开启流式 @planned V1.0 */
+  /** 默认是否开启流式 */
   defaultStream?: boolean
-  /** 全局插件 @planned V1.0 */
+  /** 全局插件 */
   globalPlugins?: PluginInstance[]
-  /** 模型调用重试配置 @planned V1.0 */
-  retry?: {
-    maxRetries?: number
-    backoff?: boolean
-  }
-  /** 可观测性配置 @planned V1.0 */
+  /** 可观测性配置 @planned V2.0 */
   telemetry?: {
     enabled?: boolean
     exporter?: (event: any) => void
   }
-  /** 成本上限 @planned V1.0 */
+  /** 成本上限 @planned V2.0 */
   maxCostPerRun?: number
 }
 
