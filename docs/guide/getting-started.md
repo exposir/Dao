@@ -3,7 +3,7 @@
 ## 安装
 
 ```bash
-npm install dao
+npm install dao-ai
 ```
 
 ## 最简用法
@@ -11,7 +11,7 @@ npm install dao
 3 行代码，创建你的第一个 Agent：
 
 ```typescript
-import { agent } from "dao"
+import { agent } from "dao-ai"
 
 const bot = agent({ model: "deepseek/deepseek-chat" })
 await bot.chat("你好")
@@ -31,7 +31,7 @@ DEEPSEEK_API_KEY=sk-xxx
 ## 带工具的 Agent
 
 ```typescript
-import { agent, tool } from "dao"
+import { agent, tool } from "dao-ai"
 
 const getCurrentTime = tool({
   name: "getCurrentTime",
@@ -92,8 +92,74 @@ for await (const chunk of bot.chatStream("介绍 TypeScript")) {
 }
 ```
 
+## 内置工具
+
+Dao 提供开箱即用的常用工具：
+
+```typescript
+import { agent } from "dao-ai"
+import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
+
+const coder = agent({
+  role: "开发者",
+  tools: [readFile, writeFile, listDir, runCommand],
+})
+
+await coder.run("读取 package.json 并告诉我项目名称")
+```
+
+## 插件系统
+
+通过插件扩展 Agent 能力。内置 `logger` 插件打印执行日志：
+
+```typescript
+import { agent, logger } from "dao-ai"
+
+const bot = agent({
+  model: "deepseek/deepseek-chat",
+  plugins: [logger()],
+})
+
+await bot.chat("你好") // 控制台会打印执行日志
+```
+
+自定义插件：
+
+```typescript
+import { plugin } from "dao-ai"
+
+const timer = plugin({
+  name: "timer",
+  hooks: {
+    beforeModelCall: () => console.time("模型调用"),
+    afterModelCall: () => console.timeEnd("模型调用"),
+  },
+})
+```
+
+## 多 Agent 协作
+
+```typescript
+import { agent, team } from "dao-ai"
+import { readFile, writeFile, runCommand } from "dao-ai/tools"
+
+const planner = agent({ role: "架构师", tools: [readFile] })
+const coder = agent({ role: "开发者", tools: [readFile, writeFile] })
+const tester = agent({ role: "测试工程师", tools: [runCommand] })
+
+const squad = team({
+  members: { planner, coder, tester },
+  strategy: "auto",
+})
+
+await squad.run("给项目添加用户登录功能")
+```
+
 ## 下一步
 
 - [工具系统](/tools) — 学习如何定义自定义工具
 - [Agent Loop](/agent-loop) — 了解核心执行循环
+- [Steps 引擎](/engine) — 声明式工作流
+- [插件系统](/plugins) — 扩展 Agent 能力
+- [团队协作](/team) — 多 Agent 协同工作
 - [API 文档](/api) — 完整的类型定义和参数说明
