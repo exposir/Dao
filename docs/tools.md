@@ -9,7 +9,7 @@ Dao 统一使用 `tool()` 函数定义工具，传入一个对象。
 ### 基础用法
 
 ```typescript
-import { tool } from "dao"
+import { tool } from "dao-ai"
 
 const readFile = tool({
   name: "readFile",
@@ -121,7 +121,7 @@ function paramsToJsonSchema(params: ParamsDef): JSONSchema {
 
 ### rules.reject
 
-V0.5 中 `rules.reject` 通过 **prompt 注入** 实现——将禁止行为写入 system prompt，让 LLM 自行遵守：
+`rules.reject` 通过 **prompt 注入** 实现——将禁止行为写入 system prompt，让 LLM 自行遵守：
 
 ```typescript
 // rules.reject 注入到 system prompt
@@ -148,13 +148,10 @@ if (tool.confirm) {
 
 ---
 
-## 4. 内置工具（V1.0 计划）
-
-> ⚠️ 以下内置工具计划在 V1.0 实现，当前版本不可用。V0.1 请自行定义工具。
+## 4. 内置工具
 
 ```typescript
-// V1.0 计划
-// import { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
+import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
 ```
 
 | 工具 | 描述 | confirm 默认值 |

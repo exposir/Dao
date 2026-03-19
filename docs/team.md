@@ -11,9 +11,9 @@ team.run("任务")
   │
   └─ Lead Agent（调度员）
        │
-       ├─ delegate_to_planner("分析需求") → planner.run()
-       ├─ delegate_to_coder("实现登录") → coder.run()
-       └─ delegate_to_tester("测试登录") → tester.run()
+       ├─ delegate({ member: "planner", task: "分析需求" }) → planner.run()
+       ├─ delegate({ member: "coder", task: "实现登录" }) → coder.run()
+       └─ delegate({ member: "tester", task: "测试登录" }) → tester.run()
 ```
 
 ---
@@ -98,33 +98,27 @@ planner.run("分析需求")
 
 ---
 
-## 5. createDelegateTools — 委派工具生成
+## 5. delegate 工具 — 委派机制
 
-自动 lead 和自定义 lead **共用同一个函数**生成 delegate 工具。内部对 `member.run()` 做包装拦截，收集完整 RunResult 到内部数组，返回给 lead 的只是 `result.output`。
+自动 lead 和自定义 lead **共用同一个 `delegate` 工具**。内部根据 `member` 参数找到成员并执行。
 
 ```typescript
-function createDelegateTools(members: Record<string, AgentInstance>) {
-  const memberResults: Record<string, RunResult[]> = {}
-
-  const tools = Object.entries(members).map(([name, member]) => {
-    const config = member.getConfig()
-    memberResults[name] = []
-
-    return tool({
-      name: `delegate_to_${name}`,
-      description: `委派任务给${config.role || name}。`,
-      params: { task: "任务描述" },
-      run: async ({ task }) => {
-        const result = await member.run(task)
-        memberResults[name].push(result)  // 收集完整 RunResult
-        return result.output              // 只返回 output 给 lead
-      },
-    })
-  })
-
-  // 返回 tools 和 results 引用，teamRun 直接用 memberResults
-  return { tools, memberResults }
-}
+const delegateTool = tool({
+  name: "delegate",
+  description: `将任务委派给团队成员执行。\n可用成员：\n${memberDescriptions}`,
+  params: {
+    member: "团队成员名称",
+    task: "要委派的任务描述",
+  },
+  run: async ({ member: memberName, task }) => {
+    const memberAgent = members[memberName]
+    if (!memberAgent) {
+      return `错误：成员 "${memberName}" 不存在。可用成员：${Object.keys(members).join(", ")}`
+    }
+    const result = await memberAgent.run(task)
+    return result.output  // 只返回 output 给 lead
+  },
+})
 ```
 
 ---

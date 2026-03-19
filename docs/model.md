@@ -84,7 +84,7 @@ const bot = agent({}) // 自动使用 deepseek/deepseek-chat
 ## 5. 自定义 Provider
 
 ```typescript
-import { registerProvider } from "dao"
+import { registerProvider } from "dao-ai"
 import { createOpenAI } from "@ai-sdk/openai"
 
 // 注册百度文心（OpenAI 兼容模式）

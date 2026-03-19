@@ -11,7 +11,7 @@
 ### 快速示例
 
 ```typescript
-import { agent } from "dao"
+import { agent } from "dao-ai"
 
 // 最简用法
 const bot = agent({ model: "deepseek/deepseek-chat" })
@@ -90,7 +90,7 @@ interface AgentOptions {
    */
   systemPrompt?: string
 
-  // === 以下为预留扩展点（V0.1 不实现） ===
+  // === 以下为预留扩展点 ===
 
   /**
    * 工具确认回调（预留）
@@ -147,9 +147,9 @@ interface ConditionalStep {
   retry?: number
 }
 
-// WaitStep 计划在 V0.5 支持，V0.1 不包含
+// WaitStep 计划在未来版本支持
 // interface WaitStep { wait: string }
-// AgentInstance 将在 V0.5 新增 resume(data?: any): Promise<RunResult>
+// AgentInstance 将新增 resume(data?: any): Promise<RunResult>
 ```
 
 ### StepContext
@@ -197,8 +197,8 @@ interface RunResult {
   /** 最终输出文本 */
   output: string
 
-  /** 执行的步骤记录 */
-  steps: { step: Step; result: any }[]
+  /** 模型调用轮次记录 */
+  turns: { turn: string; result: any }[]
 
   /** 使用的 token 数 */
   usage: { promptTokens: number; completionTokens: number; totalTokens: number }
@@ -208,7 +208,7 @@ interface RunResult {
 }
 
 interface RunEvent {
-  type: "text" | "tool_call" | "tool_result" | "step_start" | "step_end" | "error" | "done"
+  type: "text" | "step_start" | "step_end" | "error" | "done"
   data: any
 }
 ```
@@ -219,12 +219,12 @@ interface RunEvent {
 
 创建一个 Agent 团队。
 
-> ⚠️ team() 计划在 V1.0 实现，以下为 API 设计预览。
+
 
 ### 快速示例
 
 ```typescript
-import { agent, team } from "dao"
+import { agent, team } from "dao-ai"
 
 const planner = agent({ role: "架构师", tools: [readFile] })
 const coder = agent({ role: "开发者", tools: [readFile, writeFile] })
@@ -249,6 +249,9 @@ interface TeamOptions {
   /** 团队成员，key 为成员名称 */
   members: Record<string, AgentInstance>
 
+  /** 调度策略 */
+  strategy?: "auto" | "sequential" | "parallel"
+
   /** 插件列表（挂在 lead 上，不注入 member） */
   plugins?: PluginInstance[]
 
@@ -269,6 +272,9 @@ interface TeamInstance {
 
   /** 流式执行 */
   runStream(task: string): AsyncIterable<TeamRunEvent>
+
+  /** 获取成员列表 */
+  getMembers(): Record<string, AgentInstance>
 }
 
 interface TeamRunResult {
@@ -332,7 +338,7 @@ tool({
 ### 快速示例
 
 ```typescript
-import { tool } from "dao"
+import { tool } from "dao-ai"
 
 const readFile = tool({
   name: "readFile",
@@ -390,7 +396,7 @@ interface ParamSpec {
 ### 示例
 
 ```typescript
-import { tool } from "dao"
+import { tool } from "dao-ai"
 
 // 基础用法
 const readFile = tool({
@@ -471,12 +477,12 @@ interface ToolContext {
 
 定义一个插件。
 
-> ⚠️ plugin() 计划在 V1.0 实现，以下为 API 设计预览。
+
 
 ### 快速示例
 
 ```typescript
-import { plugin, agent } from "dao"
+import { plugin, agent } from "dao-ai"
 
 function logger() {
   return plugin({
@@ -569,7 +575,7 @@ interface PluginInstance {
 ### 快速示例
 
 ```typescript
-import { configure } from "dao"
+import { configure } from "dao-ai"
 
 configure({
   defaultModel: "deepseek/deepseek-chat",
@@ -580,7 +586,7 @@ configure({
 ### 类型定义
 
 ```typescript
-import { configure } from "dao"
+import { configure } from "dao-ai"
 
 function configure(options: ConfigOptions): void
 
@@ -603,7 +609,7 @@ interface ConfigOptions {
   /** 全局插件（所有 agent 自动加载） */
   globalPlugins?: PluginInstance[]
 
-  // === 以下为预留扩展点（V0.1 不实现） ===
+  // === 以下为预留扩展点 ===
 
   /**
    * 模型调用重试配置（预留）
@@ -638,13 +644,15 @@ interface ConfigOptions {
 ## 6. 导出总览
 
 ```typescript
-// dao 主入口
+// dao-ai 主入口
 export { agent } from "./agent"
 export { team } from "./team"
 export { tool } from "./tool"
-export { plugin } from "./plugin"
+export { plugin, logger } from "./plugin"
 export { configure } from "./config"
 export { registerProvider } from "./model"
+export { compileRules } from "./rules"
+export { AbortError } from "./engine"
 
 // registerProvider 类型
 function registerProvider(name: string, entry: ProviderEntry): void
@@ -654,9 +662,6 @@ interface ProviderEntry {
   defaultModel: string
 }
 
-// dao/tools 内置工具（V1.0 计划）
-// export { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
-
-// dao/plugins 内置插件（V1.0 计划，工厂函数，调用后返回插件实例）
-// export { logger } from "dao/plugins"
+// dao-ai/tools 内置工具
+export { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
 ```

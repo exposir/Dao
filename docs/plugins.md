@@ -71,7 +71,7 @@ interface HookContext {
 ### 4.1 Logger 插件
 
 ```typescript
-import { plugin } from "dao"
+import { plugin } from "dao-ai"
 
 // 工厂函数：调用后返回插件实例
 function logger() {
@@ -147,14 +147,14 @@ const bot = agent({
 // 3. pluginC.hooks.beforeModelCall
 ```
 
-如果某个插件的 hook 调用了 `skip()`，后续插件的该 hook 仍会执行，但核心行为（如工具执行）会被跳过。
+如果某个插件的 hook 调用了 `skip()`，后续插件的该 hook **不会执行**，核心行为（如工具执行、模型调用）也会被跳过。
 
 ---
 
 ## 6. 全局插件 vs 实例插件
 
 ```typescript
-import { configure, agent } from "dao"
+import { configure, agent } from "dao-ai"
 
 // 全局插件：所有 agent 自动加载
 configure({

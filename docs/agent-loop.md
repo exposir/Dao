@@ -193,13 +193,10 @@ const result = streamText({
 for await (const event of agent.runStream("任务")) {
   switch (event.type) {
     case "text":        // 文本片段
+    case "step_start":  // Steps 引擎：开始新步骤
+    case "step_end":    // Steps 引擎：步骤完成
+    case "error":       // 错误
     case "done":        // 全部完成
-    // V0.5 计划支持：
-    // case "tool_call":   // 即将调用工具
-    // case "tool_result": // 工具执行结果
-    // case "step_start":  // Steps 引擎：开始新步骤
-    // case "step_end":    // Steps 引擎：步骤完成
-    // case "error":       // 错误
   }
 }
 ```
@@ -218,9 +215,9 @@ chat("问题3") → 带上所有历史调用模型
 clearMemory() → 清空历史
 ```
 
-**V0.1 实现**：内存存储（数组），进程重启后丢失。messages 超出上下文窗口时报错。
+**当前实现**：内存存储（数组），进程重启后丢失。messages 超出上下文窗口时报错。
 
-**上下文窗口管理**（V0.5 计划）：
+**上下文窗口管理**（未来计划）：
 - 自动压缩早期消息（保留最近 N 轮 + 摘要）
 - 压缩策略：让 LLM 生成摘要，替换原始消息
 - 需要解决 token 计数（不同模型 tokenizer 不同）和压缩调用的额外开销

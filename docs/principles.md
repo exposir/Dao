@@ -86,7 +86,7 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 
 ## 未来演进方向
 
-> 以下能力不在 V0.1 范围内，但在框架走向"生产级"时需要逐步引入。
+> 以下能力将在未来版本逐步引入。
 
 ### 1. 可观测性（Observability）
 

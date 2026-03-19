@@ -7,7 +7,7 @@
 > **直觉优先 · 渐进式 · 开源模型友好**
 
 ```typescript
-import { agent } from "dao"
+import { agent } from "dao-ai"
 
 const bot = agent({ model: "deepseek/deepseek-chat" })
 await bot.chat("你好")
@@ -82,7 +82,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 ### 3.1 agent() — 创建 Agent
 
 ```typescript
-import { agent } from "dao"
+import { agent } from "dao-ai"
 
 const bot = agent({
   // 身份
@@ -109,7 +109,7 @@ const bot = agent({
 
   // 增强
   memory: true,                    // 开启记忆（默认关闭）
-  plugins: [logger()],             // 插件（V1.0）
+  plugins: [logger()],             // 插件
 })
 
 // 使用
@@ -117,10 +117,10 @@ await bot.chat("你好")                    // 对话模式
 await bot.run("审查 src/ 目录下的代码")     // 任务模式
 ```
 
-### 3.2 team() — 创建团队（V1.0 计划）
+### 3.2 team() — 创建团队
 
 ```typescript
-import { agent, team } from "dao"
+import { agent, team } from "dao-ai"
 
 const planner = agent({
   role: "架构师",
@@ -162,12 +162,12 @@ const squad = team({
 await squad.run("给项目添加用户登录功能")
 ```
 
-> **架构说明**：`team()` 底层是单 Agent 架构——lead 做决策，members 被调用。但开发者看到的是"团队协作"。计划在 V1.0 实现。
+> **架构说明**：`team()` 底层是单 Agent 架构——lead 做决策，members 被调用。但开发者看到的是"团队协作"。
 
 ### 3.3 tool() — 定义工具
 
 ```typescript
-import { tool } from "dao"
+import { tool } from "dao-ai"
 
 // 基础用法
 const readFile = tool({
@@ -222,7 +222,7 @@ const lead = agent({
     ]},
     "根据调研结果制定文章大纲",
     (ctx) => writer.run(`按以下大纲写文章：${ctx.lastResult}`),
-    { wait: "请审查文章内容" },  // V0.5 计划
+    { wait: "请审查文章内容" },  // 未来计划
     "发布",
   ],
 })
@@ -356,7 +356,7 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 ### 5.2 插件接口
 
 ```typescript
-import { plugin } from "dao"
+import { plugin } from "dao-ai"
 
 // 工厂函数：调用后返回插件实例
 function logger() {
@@ -427,24 +427,25 @@ const bot = agent({ plugins: [logger()] })
 
 ### V0.1 — 核心可用
 
-- [ ] `agent()` API + Agent Loop
-- [ ] `tool()` API（单对象写法 + 自动转 JSON Schema）
-- [ ] 模型层（DeepSeek / OpenAI / Gemini）
-- [ ] 流式输出
-- [ ] `memory: true` 基础记忆（内存数组）
+- [x] `agent()` API + Agent Loop
+- [x] `tool()` API（单对象写法 + 自动转 JSON Schema）
+- [x] 模型层（DeepSeek / OpenAI / Gemini）
+- [x] 流式输出
+- [x] `memory: true` 基础记忆（内存数组）
 
 ### V0.5 — 流程控制
 
-- [ ] `steps` 引擎（parallel / if / retry）
-- [ ] `rules`（focus / reject）
+- [x] `steps` 引擎（parallel / if / retry）
+- [x] `rules`（focus / reject）
 - [ ] 上下文压缩（memory 高级管理）
 - [ ] `wait` 步骤 + `resume()` API
 
 ### V1.0 — 完整能力
 
-- [ ] `team()` API + 单 Agent 调度
-- [ ] 插件系统（hooks）
-- [ ] 文档（中文先行，后续补充英文）
+- [x] `team()` API + 单 Agent 调度
+- [x] 插件系统（hooks）
+- [x] 内置工具（readFile / writeFile / listDir / runCommand / search）
+- [x] 中文文档
 
 ### 不做（后续版本）
 
@@ -461,24 +462,23 @@ const bot = agent({ plugins: [logger()] })
 ```
 dao/
 ├── src/
-│   ├── index.ts          # 入口，导出 agent / team / tool
-│   ├── agent.ts          # agent() 实现
-│   ├── team.ts           # team() 实现
-│   ├── tool.ts           # tool() + 简写参数转 JSON Schema
-│   ├── loop.ts           # Agent Loop 核心循环
-│   ├── engine.ts         # Steps 引擎
-│   ├── rules.ts          # Rules 行为约束
-│   ├── memory.ts         # Memory 基础实现
-│   ├── model.ts          # 模型层（Vercel AI SDK 封装）
-│   ├── plugin.ts         # 插件系统
-│   └── types.ts          # 类型定义
-├── plugins/
-│   └── logger.ts         # 内置 logger 插件
-├── tools/
-│   ├── fs.ts             # 文件操作工具
-│   └── shell.ts          # 命令行工具
-├── docs/                 # 中文文档
-├── examples/             # 示例项目
+│   ├── core/              # 基础设施
+│   │   ├── types.ts       # 类型定义
+│   │   ├── loop.ts        # Agent Loop
+│   │   ├── config.ts      # 全局配置
+│   │   └── model.ts       # 模型解析
+│   ├── agent.ts           # agent() 入口
+│   ├── tool.ts            # tool() + 简写参数转 JSON Schema
+│   ├── engine.ts          # Steps 引擎
+│   ├── rules.ts           # Rules 行为约束
+│   ├── plugin.ts          # 插件系统 + 内置 logger
+│   ├── team.ts            # team() 多 Agent 协作
+│   ├── tools/             # 内置工具
+│   │   └── index.ts
+│   └── index.ts           # 导出入口
+├── tests/                 # 单元测试
+├── docs/                  # 中文文档
+├── examples/              # 示例项目
 ├── package.json
 └── tsconfig.json
 ```

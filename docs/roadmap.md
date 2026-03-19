@@ -54,7 +54,7 @@ bot.chat("你好")    steps 引擎          team() 多 Agent
 验证：完整跑通以下代码：
 
 ```typescript
-import { agent, tool } from "dao"
+import { agent, tool } from "dao-ai"
 
 const readFile = tool({
   name: "readFile",
@@ -101,11 +101,11 @@ await bot.chat("读一下 package.json 的内容")
 
 ### V0.1 交付物
 
-- [ ] `bot.chat("你好")` 能收到模型回复
-- [ ] `bot.chat("读一下 package.json")` 能调用工具并返回结果
-- [ ] `memory: true` 时多轮对话保持上下文
-- [ ] `bot.run("任务")` 能自主循环直到完成或 maxTurns
-- [ ] stream 模式能逐字输出
+- [x] `bot.chat("你好")` 能收到模型回复
+- [x] `bot.chat("读一下 package.json")` 能调用工具并返回结果
+- [x] `memory: true` 时多轮对话保持上下文
+- [x] `bot.run("任务")` 能自主循环直到完成或 maxTurns
+- [x] stream 模式能逐字输出
 
 ---
 
@@ -138,11 +138,11 @@ await bot.chat("读一下 package.json 的内容")
 
 ### V0.5 交付物
 
-- [ ] 步骤列表能按顺序执行
-- [ ] parallel 能并行执行
-- [ ] if/then/else 能根据条件分支
-- [ ] retry 能重试失败步骤
-- [ ] rules.reject 能通过 prompt 约束 LLM 的行为
+- [x] 步骤列表能按顺序执行
+- [x] parallel 能并行执行
+- [x] if/then/else 能根据条件分支
+- [x] retry 能重试失败步骤
+- [x] rules.reject 能通过 prompt 约束 LLM 的行为
 - [ ] wait 能暂停并恢复
 
 ---
@@ -155,8 +155,7 @@ await bot.chat("读一下 package.json 的内容")
 
 | 文件 | 内容 |
 |---|---|
-| `src/plugin.ts` | plugin() 函数、hook 注册和执行、全局插件 |
-| `plugins/logger.ts` | 内置 logger 插件 |
+| `src/plugin.ts` | plugin() 函数、hook 注册和执行、内置 logger、全局插件 |
 
 ### 第 11 步：team() 系统
 
@@ -168,8 +167,7 @@ await bot.chat("读一下 package.json 的内容")
 
 | 文件 | 内容 |
 |---|---|
-| `tools/fs.ts` | readFile, writeFile, listDir |
-| `tools/shell.ts` | runCommand, search |
+| `src/tools/index.ts` | readFile, writeFile, listDir, runCommand, search |
 
 ### V1.0 依赖
 
@@ -177,10 +175,10 @@ await bot.chat("读一下 package.json 的内容")
 
 ### V1.0 交付物
 
-- [ ] 插件 hooks 正常触发
-- [ ] team() 能调度多个 Agent
-- [ ] 内置工具可用
-- [ ] 完整文档（中文 + 英文）
+- [x] 插件 hooks 正常触发
+- [x] team() 能调度多个 Agent
+- [x] 内置工具可用
+- [x] 中文文档
 
 ---
 
