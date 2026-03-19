@@ -24,7 +24,7 @@ await bot.chat("你好")
 | 痛点 | Dao 的解法 |
 |---|---|
 | Mastra 太重（28 个包，agent.ts 5375 行） | 核心精简，一个包搞定 |
-| Vercel AI SDK 太薄（没有 Loop/Memory/权限） | 内置 Agent Loop、权限、策略 |
+| Vercel AI SDK 太薄（没有 Loop/Memory/行为约束） | 内置 Agent Loop、行为约束、策略 |
 | 没有真正直觉的 TS Agent 框架 | API 望文生义，开箱即用 |
 | API 不直觉（`getDefaultGenerateOptionsLegacy()`） | `role`/`tools`/`steps`，望文生义 |
 | 从简单到复杂，门槛断崖式上升 | 渐进式，复杂度线性增长 |
@@ -109,7 +109,7 @@ const bot = agent({
 
   // 增强
   memory: true,                    // 开启记忆（默认关闭）
-  plugins: [logger()],             // 插件
+  plugins: [logger()],             // 插件（V1.0）
 })
 
 // 使用
@@ -382,7 +382,7 @@ const bot = agent({ plugins: [logger()] })
 | Steps 引擎 | Scorers（质量评估） |
 | 工具系统 | Schema 校验 |
 | Memory 基础版 | MCP 协议支持 |
-| Rules 权限 | 高级 Memory（向量存储等） |
+| Rules 行为约束 | 高级 Memory（向量存储等） |
 | 流式输出 | 自定义 UI 集成 |
 
 ---
@@ -407,14 +407,14 @@ const bot = agent({ plugins: [logger()] })
 
 1. **唯一行为描述式 API**（role/tools/steps/rules）— 开发者描述角色，不是配置机器
 2. **步骤列表替代流程图** — LLM 做决策，开发者给方向
-3. **`rules.reject` 内置权限** — 其他框架均无
+3. **`rules.reject` 内置行为约束** — 其他框架均无
 4. **开源模型开箱即用** — DeepSeek、Qwen 默认支持
 
 ### 6.3 最接近的竞品分析
 
 | 框架 | 相似点 | Dao 的优势 |
 |---|---|---|
-| **VoltAgent** | 声明式、TS 原生、可观测性 | Dao 有 steps 引擎、rules 权限、更直觉的 API |
+| **VoltAgent** | 声明式、TS 原生、可观测性 | Dao 有 steps 引擎、rules 行为约束、更直觉的 API |
 | **easy-agent** | 极简、轻量 | Dao 有 team、steps、memory，能力完整 |
 | **KaibanJS** | 角色定义、多 Agent | Dao 用声明式步骤，KaibanJS 用看板管理 |
 | **PraisonAI** | 多 Agent、低代码 | Dao 是 TS 原生，PraisonAI 从 Python 移植 |
@@ -431,12 +431,13 @@ const bot = agent({ plugins: [logger()] })
 - [ ] `tool()` API（单对象写法 + 自动转 JSON Schema）
 - [ ] 模型层（DeepSeek / OpenAI / Gemini）
 - [ ] 流式输出
+- [ ] `memory: true` 基础记忆（内存数组）
 
 ### V0.5 — 流程控制
 
 - [ ] `steps` 引擎（parallel / if / retry）
 - [ ] `rules`（focus / reject）
-- [ ] `memory: true` 基础记忆
+- [ ] 上下文压缩（memory 高级管理）
 - [ ] `wait` 步骤 + `resume()` API
 
 ### V1.0 — 完整能力
@@ -466,7 +467,7 @@ dao/
 │   ├── tool.ts           # tool() + 简写参数转 JSON Schema
 │   ├── loop.ts           # Agent Loop 核心循环
 │   ├── engine.ts         # Steps 引擎
-│   ├── rules.ts          # Rules 权限判断
+│   ├── rules.ts          # Rules 行为约束
 │   ├── memory.ts         # Memory 基础实现
 │   ├── model.ts          # 模型层（Vercel AI SDK 封装）
 │   ├── plugin.ts         # 插件系统

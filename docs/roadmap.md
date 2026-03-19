@@ -13,7 +13,7 @@ bot.chat("你好")    steps 引擎          team() 多 Agent
 
 ## V0.1 — 核心可用
 
-> 目标：`agent()` + `tool()` + Agent Loop + 模型层，能跑通 `bot.chat("你好")`
+> 目标：`agent()` + `tool()` + Agent Loop + 模型层 + 基础 memory，能跑通 `bot.chat("你好")`
 
 ### 第 1 步：类型定义
 
@@ -78,7 +78,7 @@ await bot.chat("读一下 package.json 的内容")
 |---|---|
 | `src/index.ts` | 导出 agent, tool, configure |
 | `tsconfig.json` | TypeScript 配置 |
-| `package.json` | 补充 dependencies（ai, @ai-sdk/deepseek 等） |
+| `package.json` | 补充 dependency（`ai`）+ peerDependencies（`@ai-sdk/deepseek` 等，用户按需安装） |
 
 ### V0.1 交付物
 
@@ -92,7 +92,7 @@ await bot.chat("读一下 package.json 的内容")
 
 ## V0.5 — 流程控制
 
-> 目标：steps 引擎 + rules + memory，能跑通步骤流程
+> 目标：steps 引擎 + rules + 上下文压缩，能跑通步骤流程
 
 ### 第 7 步：Rules 系统
 
@@ -119,7 +119,7 @@ await bot.chat("读一下 package.json 的内容")
 - [ ] parallel 能并行执行
 - [ ] if/then/else 能根据条件分支
 - [ ] retry 能重试失败步骤
-- [ ] rules.reject 能阻止 LLM 做被禁止的事
+- [ ] rules.reject 能通过 prompt 约束 LLM 的行为
 - [ ] wait 能暂停并恢复
 
 ---

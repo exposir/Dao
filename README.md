@@ -8,8 +8,8 @@ Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。
 
 - 🎯 **描述角色，而非配置机器** — 用 `role`/`tools`/`steps`/`rules` 描述你的 Agent
 - 📈 **渐进式复杂度** — 3 行代码起步，按需扩展
-- 🔌 **插件生态** — 核心精简，能力通过插件扩展
 - 🤖 **开源模型友好** — DeepSeek / Qwen / Kimi 开箱即用
+- 🔌 **插件生态** — 核心精简，能力通过插件扩展（V1.0）
 
 ## 快速开始
 
@@ -51,7 +51,7 @@ const reviewer = agent({
 await reviewer.run("审查 src/ 目录")
 ```
 
-### 多 Agent 协作
+### 多 Agent 协作（V1.0 计划）
 
 ```typescript
 import { agent, team } from "dao"

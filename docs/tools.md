@@ -117,11 +117,11 @@ function paramsToJsonSchema(params: ParamsDef): JSONSchema {
 
 ---
 
-## 4. 工具执行安全
+## 3. 工具执行安全
 
 ### rules.reject
 
-V1 中 `rules.reject` 通过 **prompt 注入** 实现——将禁止行为写入 system prompt，让 LLM 自行遵守：
+V0.5 中 `rules.reject` 通过 **prompt 注入** 实现——将禁止行为写入 system prompt，让 LLM 自行遵守：
 
 ```typescript
 // rules.reject 注入到 system prompt
@@ -148,7 +148,7 @@ if (tool.confirm) {
 
 ---
 
-## 5. 内置工具
+## 4. 内置工具
 
 Dao 提供常用工具，通过 `dao/tools` 导入：
 

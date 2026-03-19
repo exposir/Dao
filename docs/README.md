@@ -23,6 +23,6 @@
 
 | 阶段 | 内容 |
 |---|---|
-| **V0.1** | agent() + tool() + Agent Loop + 模型层 |
-| **V0.5** | steps 引擎 + rules + memory + wait/resume |
+| **V0.1** | agent() + tool() + Agent Loop + 模型层 + 基础 memory |
+| **V0.5** | steps 引擎 + rules + 上下文压缩 + wait/resume |
 | **V1.0** | team() + plugins + 完整文档 |
