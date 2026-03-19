@@ -279,18 +279,52 @@ await lead.run("写一篇前端技术趋势文章")
 
 ### 4.4 模型层
 
-基于 Vercel AI SDK，统一 `provider/model` 格式：
+基于 Vercel AI SDK，统一 `provider/model` 格式。作为中文优先框架，Dao 优先支持中国主流模型：
+
+#### 中国模型（优先支持）
+
+| 模型 | provider | 用法 | 支持方式 |
+|---|---|---|---|
+| **DeepSeek** | `@ai-sdk/deepseek` | `"deepseek/deepseek-chat"` | 官方 |
+| **月之暗面 Kimi** | `@ai-sdk/moonshotai` | `"moonshotai/kimi-k2.5"` | 官方 |
+| **阿里通义千问 Qwen** | `@ai-sdk/alibaba` | `"alibaba/qwen3-max"` | 官方 |
+| **智谱 GLM** | `@ai-sdk/zhipu` | `"zhipu/glm-4-plus"` | 官方 |
+| **MiniMax** | 社区包 | `"minimax/minimax-m2"` | 社区 |
+| **百川 / Yi / 豆包** | OpenAI 兼容 | 通过 `openai-compatible` 接入 | 兼容 |
+
+#### 国际模型
+
+| 模型 | 用法 |
+|---|---|
+| **OpenAI** | `"openai/gpt-4o"` |
+| **Google Gemini** | `"google/gemini-2.5-pro"` |
+| **Anthropic Claude** | `"anthropic/claude-sonnet-4-5"` |
+| **xAI Grok** | `"xai/grok-4"` |
 
 ```typescript
-model: "deepseek/deepseek-chat"    // DeepSeek
-model: "openai/gpt-4o"             // OpenAI
-model: "google/gemini-2.5-pro"     // Gemini
+// 中国模型用法示例
+const bot = agent({
+  model: "deepseek/deepseek-chat",  // 默认推荐
+})
+
+const kimi = agent({
+  model: "moonshotai/kimi-k2.5",   // 月之暗面
+})
+
+const qwen = agent({
+  model: "alibaba/qwen3-max",      // 通义千问
+})
 ```
 
 通过 `.env` 文件配置 API Key：
 
 ```env
+# 中国模型
 DEEPSEEK_API_KEY=sk-xxx
+MOONSHOT_API_KEY=sk-xxx
+ALIBABA_API_KEY=sk-xxx
+
+# 国际模型
 OPENAI_API_KEY=sk-xxx
 GOOGLE_API_KEY=xxx
 ```
