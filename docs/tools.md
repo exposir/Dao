@@ -119,62 +119,32 @@ function paramsToJsonSchema(params: ParamsDef): JSONSchema {
 
 ## 4. 工具执行安全
 
-### rules.reject 拦截
+### rules.reject
+
+V1 中 `rules.reject` 通过 **prompt 注入** 实现——将禁止行为写入 system prompt，让 LLM 自行遵守：
 
 ```typescript
-async function executeToolSafely(
-  toolName: string,
-  params: any,
-  rules: Rules,
-  registry: ToolRegistry,
-): Promise<ToolResult> {
-  // 1. 查找工具
-  const tool = registry.get(toolName)
-  if (!tool) {
-    return { error: `工具 "${toolName}" 不存在` }
-  }
-
-  // 2. rules.reject 检查
-  if (rules.reject?.length) {
-    const description = `${toolName}(${JSON.stringify(params)})`
-    // 简单字符串匹配 + LLM 判断
-    for (const rule of rules.reject) {
-      if (matchesRejectRule(description, rule)) {
-        return { error: `操作被拒绝：${rule}` }
-      }
-    }
-  }
-
-  // 3. confirm 检查
-  if (tool.confirm) {
-    const confirmed = await requestUserConfirmation(toolName, params)
-    if (!confirmed) {
-      return { error: "用户拒绝了该操作" }
-    }
-  }
-
-  // 4. 执行
-  try {
-    const result = await tool.execute(params)
-    return { data: result }
-  } catch (error) {
-    return { error: error.message }
-  }
+// rules.reject 注入到 system prompt
+if (rules.reject?.length) {
+  systemPrompt += `\n\n你绝对不能做以下事情：\n${rules.reject.map(r => `- ${r}`).join("\n")}`
 }
 ```
 
-### reject 规则匹配
+> 不做硬拦截。LLM 负责判断什么工具调用违反了 reject 规则。后续版本可增加工具级精确拦截。
+
+### confirm 确认
+
+当 `tool({ confirm: true })` 时，工具调用前需要用户确认：
 
 ```typescript
-function matchesRejectRule(action: string, rule: string): boolean {
-  // 简单匹配：关键词包含
-  const keywords = rule.toLowerCase().split(/\s+/)
-  const actionLower = action.toLowerCase()
-  return keywords.some(kw => actionLower.includes(kw))
+// confirm 流程
+if (tool.confirm) {
+  const confirmed = await requestUserConfirmation(toolName, params)
+  if (!confirmed) {
+    return { error: "用户拒绝了该操作" }
+  }
 }
 ```
-
-> 后续版本可升级为 LLM 判断或 glob 模式匹配。
 
 ---
 

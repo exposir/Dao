@@ -77,7 +77,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 ## 文档
 
-详细设计文档见 [design.md](./design.md)。
+详细设计文档见 [design.md](./docs/design.md)。
 
 ## License
 

@@ -95,70 +95,30 @@ steps: [
 1. 调用函数，传入 `StepContext`
 2. 返回 truthy → 执行 `then`，falsy → 执行 `else`
 
-### 2.4 重试步骤（retry）
+### 2.4 重试（retry）
+
+`retry` 是 `ConditionalStep` 的可选属性，不是独立步骤类型：
 
 ```typescript
-// 方式一：对上一步结果重试
 { if: "测试失败", then: "修复问题", retry: 3 }
-
-// 方式二：独立重试
-{ step: "运行测试并修复失败的用例", retry: 3 }
 ```
 
 **引擎行为**：
-1. 执行 `step`（或 `then`）
-2. 如果步骤标记为失败（LLM 报告未完成或 throw error）
-3. 重新执行，最多重试 `retry` 次
-4. 超过重试次数后：
-   - 记录失败
-   - 继续执行后续步骤（不终止整个流程）
-   - 失败信息存入 `StepContext.lastResult`
+1. 先执行 `then`
+2. 然后评估 `if` 条件
+3. 如果条件为 YES（仍然失败），重新执行 `then`
+4. 最多重试 `retry` 次
+5. 超过重试次数后：记录失败，继续执行后续步骤
 
-**失败判断**：
-```
-请判断上一步是否成功完成。回答 SUCCESS 或 FAILED。
-```
+### 2.5 等待步骤（wait）— V0.5 计划
 
-### 2.5 等待步骤（wait）
+> 以下功能计划在 V0.5 实现，V0.1 不包含。
 
 ```typescript
 { wait: "请确认是否部署到生产环境" }
 ```
 
-**引擎行为**：
-1. 暂停执行
-2. 将当前状态序列化到 JSON
-3. 抛出 `SuspendEvent`，由上层处理
-4. 上层代码（CLI、Web Server 等）展示等待信息给用户
-5. 用户确认后调用 `resume()` 恢复执行
-
-**序列化状态**：
-```typescript
-interface SuspendedState {
-  /** 暂停位置（第几步） */
-  stepIndex: number
-  /** 之前步骤的结果 */
-  history: { step: Step; result: any }[]
-  /** 暂停时间 */
-  suspendedAt: number
-  /** 提示信息 */
-  message: string
-}
-```
-
-**恢复执行**：
-```typescript
-const result = await agent.run("部署应用")
-// result 可能是 SuspendEvent
-
-if (result.suspended) {
-  // 等用户确认...
-  const finalResult = await agent.resume(result.suspendId, {
-    confirmed: true,
-    message: "确认部署",
-  })
-}
-```
+需要状态序列化和 `resume()` API，复杂度较高，延后实现。
 
 ### 2.6 函数步骤
 
@@ -196,15 +156,10 @@ Engine.run(steps, initialTask)
   │   ├─ step is { parallel }?
   │   │   └─ Promise.allSettled(items.map(execute))
   │   │
-  │   ├─ step is { if, then, else }?
+  │   ├─ step is { if, then, else?, retry? }?
   │   │   ├─ evaluate condition
-  │   │   └─ execute(then) or execute(else)
-  │   │
-  │   ├─ step is { retry }?
-  │   │   └─ do { execute(step) } while (failed && count < retry)
-  │   │
-  │   ├─ step is { wait }?
-  │   │   └─ throw SuspendEvent(state)
+  │   │   ├─ execute(then) or execute(else)
+  │   │   └─ retry? → do-while loop
   │   │
   │   └─ step is function?
   │       └─ step(context)

@@ -18,11 +18,8 @@ interface AgentOptions {
   /** 模型，格式为 "provider/model" */
   model?: string
 
-  /** 
-   * 可用工具列表
-   * 支持普通函数（自动推导 schema）或 tool() 返回的工具对象
-   */
-  tools?: (Function | ToolInstance)[]
+  /** 可用工具列表（统一用 tool() 定义） */
+  tools?: ToolInstance[]
 
   /**
    * 步骤列表，定义 Agent 的工作流程
@@ -80,9 +77,7 @@ interface AgentOptions {
 type Step =
   | string                          // 字符串指令，交给 LLM 执行
   | ParallelStep                    // 并行执行
-  | ConditionalStep                 // 条件分支
-  | RetryStep                       // 重试
-  | WaitStep                        // 暂停等待（suspend/resume）
+  | ConditionalStep                 // 条件分支（可带 retry）
   | ((ctx: StepContext) => any)     // 自定义函数
 
 interface ParallelStep {
@@ -94,19 +89,11 @@ interface ConditionalStep {
   if: string | ((ctx: StepContext) => boolean | Promise<boolean>)
   then: string | Step
   else?: string | Step
+  /** 可选：失败时重试次数 */
+  retry?: number
 }
 
-interface RetryStep {
-  /** 要重试的步骤 */
-  step?: string | Step
-  /** 最大重试次数 */
-  retry: number
-}
-
-interface WaitStep {
-  /** 等待提示信息，展示给用户 */
-  wait: string
-}
+// WaitStep 计划在 V0.5 支持，V0.1 不包含
 ```
 
 ### StepContext
@@ -257,7 +244,7 @@ lead 内部会为每个 member 自动生成一个工具：
 tool({
   name: "delegate_to_planner",
   description: "委派任务给架构师。架构师的职责：分析需求、制定方案、拆分任务",
-  params: { task: String },
+  params: { task: "任务描述" },
   run: ({ task }) => planner.run(task),
 })
 ```

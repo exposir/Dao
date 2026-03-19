@@ -38,7 +38,7 @@ function createAutoLead(members: Record<string, AgentInstance>): AgentInstance {
     return tool({
       name: `delegate_to_${name}`,
       description: `委派任务给${config.role || name}。`,
-      params: { task: String },
+      params: { task: "任务描述" },
       run: async ({ task }) => {
         const result = await member.run(task)
         return result.output
