@@ -358,17 +358,20 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 ```typescript
 import { plugin } from "dao"
 
-const logger = plugin({
-  name: "logger",
-  hooks: {
-    beforeModelCall: (ctx) => { console.log("调用模型:", ctx.prompt) },
-    afterToolCall: (ctx) => { console.log("工具结果:", ctx.result) },
-    onError: (ctx) => { console.error("出错:", ctx.error) },
-  },
-})
+// 工厂函数：调用后返回插件实例
+function logger() {
+  return plugin({
+    name: "logger",
+    hooks: {
+      beforeModelCall: (ctx) => { console.log("调用模型:", ctx.prompt) },
+      afterToolCall: (ctx) => { console.log("工具结果:", ctx.result) },
+      onError: (ctx) => { console.error("出错:", ctx.error) },
+    },
+  })
+}
 
 // 使用
-const bot = agent({ plugins: [logger] })
+const bot = agent({ plugins: [logger()] })
 ```
 
 ### 5.3 核心 vs 插件
