@@ -32,19 +32,8 @@ function createAutoLead(members: Record<string, AgentInstance>, maxRounds: numbe
     })
     .join("\n")
 
-  // 2. 为每个成员生成委派工具
-  const delegateTools = Object.entries(members).map(([name, member]) => {
-    const config = member.getConfig()
-    return tool({
-      name: `delegate_to_${name}`,
-      description: `委派任务给${config.role || name}。`,
-      params: { task: "任务描述" },
-      run: async ({ task }) => {
-        const result = await member.run(task)
-        return result.output
-      },
-    })
-  })
+  // 2. 为每个成员生成委派工具（和自定义 lead 路径共用同一个函数）
+  const delegateTools = createDelegateTools(members)
 
   // 3. 创建 lead Agent
   return agent({
@@ -108,7 +97,35 @@ planner.run("分析需求")
 
 ---
 
-## 5. 执行流程
+## 5. createDelegateTools — 委派工具生成
+
+自动 lead 和自定义 lead **共用同一个函数**生成 delegate 工具。内部对 `member.run()` 做包装拦截，收集完整 RunResult 到内部数组，返回给 lead 的只是 `result.output`。
+
+```typescript
+function createDelegateTools(members: Record<string, AgentInstance>): ToolInstance[] {
+  const results: Record<string, RunResult[]> = {}
+
+  return Object.entries(members).map(([name, member]) => {
+    const config = member.getConfig()
+    results[name] = []
+
+    return tool({
+      name: `delegate_to_${name}`,
+      description: `委派任务给${config.role || name}。`,
+      params: { task: "任务描述" },
+      run: async ({ task }) => {
+        const result = await member.run(task)
+        results[name].push(result)  // 收集完整 RunResult
+        return result.output        // 只返回 output 给 lead
+      },
+    })
+  })
+}
+```
+
+---
+
+## 6. 执行流程
 
 ```typescript
 async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResult> {
@@ -154,7 +171,7 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 
 ---
 
-## 6. 错误处理
+## 7. 错误处理
 
 | 场景 | 行为 |
 |---|---|

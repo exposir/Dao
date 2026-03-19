@@ -94,6 +94,8 @@ interface ConditionalStep {
 }
 
 // WaitStep 计划在 V0.5 支持，V0.1 不包含
+// interface WaitStep { wait: string }
+// AgentInstance 将在 V0.5 新增 resume(data?: any): Promise<RunResult>
 ```
 
 ### StepContext
@@ -497,6 +499,14 @@ export { tool } from "./tool"
 export { plugin } from "./plugin"
 export { configure } from "./config"
 export { registerProvider } from "./model"
+
+// registerProvider 类型
+function registerProvider(name: string, entry: ProviderEntry): void
+interface ProviderEntry {
+  create: (apiKey: string) => LanguageModelProvider
+  envKey: string
+  defaultModel: string
+}
 
 // dao/tools 内置工具
 export { readFile, writeFile, listDir, runCommand, search } from "dao/tools"

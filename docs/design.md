@@ -308,12 +308,12 @@ tool() 定义 →
 
 #### 商业模型
 
-| 模型 | 用法 |
-|---|---|
-| **OpenAI** | `"openai/gpt-4o"` |
-| **Google Gemini** | `"google/gemini-2.5-pro"` |
-| **Anthropic Claude** | `"anthropic/claude-sonnet-4-5"` |
-| **xAI Grok** | `"xai/grok-4"` |
+| 模型 | 用法 | 支持方式 |
+|---|---|---|
+| **OpenAI** | `"openai/gpt-4o"` | 内置 |
+| **Google Gemini** | `"google/gemini-2.5-pro"` | 内置 |
+| **Anthropic Claude** | `"anthropic/claude-sonnet-4-5"` | 内置 |
+| **xAI Grok** | `"xai/grok-4"` | 通过 `registerProvider()` 接入 |
 
 ```typescript
 // 开源模型用法示例
