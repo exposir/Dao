@@ -13,6 +13,7 @@ import { generateText, streamText, stepCountIs, jsonSchema } from "ai"
 import type { ModelMessage, ToolSet } from "ai"
 import type {
   AgentOptions,
+  AgentInstance,
   ToolInstance,
   ToolContext,
   RunResult,
@@ -21,9 +22,10 @@ import type {
 } from "./types.js"
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
+import { compileRules } from "./rules.js"
 
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
-function toAITools(tools: ToolInstance[]): ToolSet {
+function toAITools(tools: ToolInstance[], agentInstance: AgentInstance): ToolSet {
   const result: ToolSet = {}
   for (const t of tools) {
     result[t.name] = {
@@ -36,9 +38,8 @@ function toAITools(tools: ToolInstance[]): ToolSet {
         additionalProperties: false,
       }),
       execute: async (params: any) => {
-        // 注入 ToolContext（V0.1 占位，V0.5 完善 abort 逻辑）
         const ctx: ToolContext = {
-          agent: null as any,
+          agent: agentInstance,
           abort: () => { throw new Error("工具中止执行") },
         }
         const output = await t.execute(params, ctx)
@@ -61,11 +62,10 @@ function buildSystemPrompt(options: AgentOptions): string {
     parts.push(`你的角色是：${options.role}`)
   }
 
-  if (options.rules?.focus?.length) {
-    parts.push(`你应该重点关注：${options.rules.focus.join("、")}`)
-  }
-  if (options.rules?.reject?.length) {
-    parts.push(`你不允许做以下事情：${options.rules.reject.join("、")}`)
+  // 使用 rules 系统编译规则
+  const rulesPrompt = compileRules(options.rules)
+  if (rulesPrompt) {
+    parts.push(rulesPrompt)
   }
 
   return parts.join("\n\n")
@@ -78,6 +78,7 @@ export async function runLoop(
   options: AgentOptions,
   task: string,
   messageHistory: ModelMessage[],
+  agentInstance: AgentInstance,
 ): Promise<RunResult> {
   const globalConfig = getGlobalConfig()
   const maxTurns = options.maxTurns ?? globalConfig.defaultMaxTurns ?? 50
@@ -93,7 +94,7 @@ export async function runLoop(
 
   const model = options.modelProvider ?? await resolveModel(modelString)
   const systemPrompt = buildSystemPrompt(options)
-  const tools = options.tools?.length ? toAITools(options.tools) : undefined
+  const tools = options.tools?.length ? toAITools(options.tools, agentInstance) : undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,
@@ -142,6 +143,7 @@ export async function* runLoopStream(
   options: AgentOptions,
   task: string,
   messageHistory: ModelMessage[],
+  agentInstance: AgentInstance,
 ): AsyncIterable<RunEvent> {
   const globalConfig = getGlobalConfig()
   const maxTurns = options.maxTurns ?? globalConfig.defaultMaxTurns ?? 50
@@ -153,7 +155,7 @@ export async function* runLoopStream(
 
   const model = options.modelProvider ?? await resolveModel(modelString)
   const systemPrompt = buildSystemPrompt(options)
-  const tools = options.tools?.length ? toAITools(options.tools) : undefined
+  const tools = options.tools?.length ? toAITools(options.tools, agentInstance) : undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,

@@ -87,7 +87,7 @@ function buildSystemPrompt(options: AgentOptions, context?: string): string {
 | 循环 | 单轮（通常 1 次模型调用） | 多轮（直到任务完成） |
 | 工具调用 | 支持 | 支持 |
 | 上下文保持 | 保持完整对话历史 | 每次 run 是独立的 |
-| steps | 不触发 | V0.5 计划支持 |
+| steps | 不触发 | 触发 Steps 引擎（V0.5） |
 | 完成判断 | 模型回复后就结束 | LLM 主动标记或用完 maxTurns |
 
 **chat 流程**：
@@ -101,8 +101,9 @@ function buildSystemPrompt(options: AgentOptions, context?: string): string {
 
 **run 流程**：
 ```
-任务描述 → Agent Loop 自主循环直到完成
-          （V0.5 计划支持 steps 引擎驱动）
+任务描述 → 有 steps？
+             ├─ 有 → Steps 引擎驱动（每步调用 Agent Loop）
+             └─ 没有 → Agent Loop 自主循环直到完成
 ```
 
 ---

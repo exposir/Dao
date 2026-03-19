@@ -21,9 +21,9 @@ src/
 ├── config.ts     # configure() 全局配置
 ├── loop.ts       # Agent Loop 核心循环
 ├── agent.ts      # agent() 入口
+├── engine.ts     # Steps 引擎（V0.5）
+├── rules.ts      # Rules 系统（V0.5）
 ├── index.ts      # 导出入口
-├── engine.ts     # Steps 引擎（V0.5 计划）
-├── rules.ts      # Rules 系统（V0.5 计划）
 ├── plugin.ts     # 插件系统（V1.0 计划）
 └── team.ts       # team() 系统（V1.0 计划）
 ```
@@ -50,7 +50,7 @@ src/
 ## 版本阶段
 
 - **V0.1**：agent + tool + loop + model + 基础 memory
-- **V0.5**：steps 引擎 + rules + 上下文压缩 + wait/resume
+- **V0.5**：steps 引擎 + rules 系统
 - **V1.0**：team + plugins + 内置工具 + 完整文档
 
 ## 重要约定

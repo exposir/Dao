@@ -114,6 +114,8 @@ export interface AgentOptions {
   model?: string
   /** 可用工具列表 */
   tools?: ToolInstance[]
+  /** 步骤列表（V0.5） */
+  steps?: Step[]
   /** 规则约束 */
   rules?: {
     focus?: string[]
@@ -137,15 +139,13 @@ export interface AgentOptions {
   /** system prompt 前缀 */
   systemPrompt?: string
 
-  // === 预留扩展点（V0.1 不实现） ===
+  // === 预留扩展点 ===
 
-  /** 步骤列表 @planned V0.5 */
-  steps?: Step[]
   /** 插件列表 @planned V1.0 */
   plugins?: PluginInstance[]
-  /** 是否开启流式输出 @planned V0.5 */
+  /** 是否开启流式输出 @planned V1.0 */
   stream?: boolean
-  /** 工具确认回调 @planned V0.5 */
+  /** 工具确认回调 @planned V1.0 */
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
   /** 备用模型 @planned V1.0 */
   fallbackModel?: string
@@ -193,9 +193,9 @@ export interface TokenUsage {
   totalTokens: number
 }
 
-/** 流式事件（V0.1 仅支持 text 和 done） */
+/** 流式事件 */
 export interface RunEvent {
-  type: "text" | "done"
+  type: "text" | "step_start" | "step_end" | "error" | "done"
   data: any
 }
 
@@ -304,7 +304,7 @@ export interface ConfigOptions {
 
   // === 预留扩展点（V0.1 不实现） ===
 
-  /** 默认是否开启流式 @planned V0.5 */
+  /** 默认是否开启流式 @planned V1.0 */
   defaultStream?: boolean
   /** 全局插件 @planned V1.0 */
   globalPlugins?: PluginInstance[]
