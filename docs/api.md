@@ -649,14 +649,14 @@ export { registerProvider } from "./model"
 // registerProvider 类型
 function registerProvider(name: string, entry: ProviderEntry): void
 interface ProviderEntry {
-  create: (apiKey: string) => LanguageModelProvider
+  create: (apiKey: string) => Promise<any>  // 异步，动态 import provider
   envKey: string
   defaultModel: string
 }
 
-// dao/tools 内置工具
-export { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
+// dao/tools 内置工具（V1.0 计划）
+// export { readFile, writeFile, listDir, runCommand, search } from "dao/tools"
 
-// dao/plugins 内置插件（工厂函数，调用后返回插件实例）
-export { logger } from "dao/plugins"
+// dao/plugins 内置插件（V1.0 计划，工厂函数，调用后返回插件实例）
+// export { logger } from "dao/plugins"
 ```

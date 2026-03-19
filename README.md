@@ -93,7 +93,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 | 阶段     | 内容                                                                 | 状态      |
 | -------- | -------------------------------------------------------------------- | --------- |
-| **V0.1** | agent + tool + Agent Loop + 模型层 + 基础 memory                     | 🚧 开发中 |
+| **V0.1** | agent + tool + Agent Loop + 模型层 + 基础 memory                     | ✅ 完成   |
 | **V0.5** | steps 引擎 + rules + 上下文压缩 + wait/resume                        | 📋 计划   |
 | **V1.0** | team + plugins + 内置工具 + 完整文档                                 | 📋 计划   |
 | **未来** | 可观测性 · 容错重试 · Fallback 模型 · 成本控制 · MCP 协议 · RAG 接入 | 🔮 预留   |

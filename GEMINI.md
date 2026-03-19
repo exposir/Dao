@@ -9,7 +9,7 @@ Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。基于 Ver
 - **语言**：TypeScript（严格模式）
 - **运行时**：Node.js
 - **核心依赖**：Vercel AI SDK (`ai`)
-- **模型 Provider**：`@ai-sdk/deepseek`、`@ai-sdk/openai`、`@ai-sdk/google` 等
+- **模型 Provider**：`@ai-sdk/openai`（DeepSeek 兼容模式）、`@ai-sdk/google` 等（按需安装）
 
 ## 项目结构
 
@@ -18,13 +18,14 @@ src/
 ├── types.ts      # 所有类型定义
 ├── tool.ts       # tool() + paramsToJsonSchema
 ├── model.ts      # 模型解析（provider/model 格式）
+├── config.ts     # configure() 全局配置
 ├── loop.ts       # Agent Loop 核心循环
 ├── agent.ts      # agent() 入口
-├── engine.ts     # Steps 引擎（V0.5）
-├── rules.ts      # Rules 系统（V0.5）
-├── plugin.ts     # 插件系统（V1.0）
-├── team.ts       # team() 系统（V1.0）
-└── index.ts      # 导出入口
+├── index.ts      # 导出入口
+├── engine.ts     # Steps 引擎（V0.5 计划）
+├── rules.ts      # Rules 系统（V0.5 计划）
+├── plugin.ts     # 插件系统（V1.0 计划）
+└── team.ts       # team() 系统（V1.0 计划）
 ```
 
 ## 设计原则

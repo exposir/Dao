@@ -11,14 +11,8 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./tools": {
-      "import": "./dist/tools/index.js",
-      "types": "./dist/tools/index.d.ts"
-    },
-    "./plugins": {
-      "import": "./dist/plugins/index.js",
-      "types": "./dist/plugins/index.d.ts"
-    }
+    "_comment_tools": "V1.0 计划: ./tools -> ./dist/tools/index.js",
+    "_comment_plugins": "V1.0 计划: ./plugins -> ./dist/plugins/index.js"
   },
   "files": [
     "dist"
