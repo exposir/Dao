@@ -11,6 +11,7 @@ import type {
   TeamRunResult,
   TeamRunEvent,
   AgentInstance,
+  RunResult,
 } from "./core/types.js"
 import { tool } from "./tool.js"
 import { agent } from "./agent.js"
@@ -43,7 +44,7 @@ export function team(options: TeamOptions): TeamInstance {
     .join("\n")
 
   // 用闭包收集 member 执行结果
-  const memberResults: Record<string, any[]> = {}
+  const memberResults: Record<string, RunResult[]> = {}
   for (const name of Object.keys(members)) {
     memberResults[name] = []
   }

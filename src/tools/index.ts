@@ -138,7 +138,8 @@ export const search = tool({
       try {
         const entries = fs.readdirSync(d, { withFileTypes: true })
         for (const e of entries) {
-          if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "dist") continue
+          const skip = new Set(["node_modules", "dist", ".git", ".next", ".cache"])
+          if (skip.has(e.name)) continue
           const fullPath = path.join(d, e.name)
           if (e.isDirectory()) {
             walk(fullPath)
