@@ -30,10 +30,14 @@ src/
 ## 设计原则
 
 1. **所有公开 API 接收单个对象参数**：`agent({...})`、`tool({...})`、`plugin({...})`
-2. **不依赖 Zod**：参数定义用简写语法，框架内部转 JSON Schema
-3. **rules.reject 是 prompt 注入**：不做硬拦截，注入到 system prompt
-4. **步骤完成用 maxTurns 兜底**：不依赖 LLM 输出特殊标记
-5. **默认继续执行**：单步失败不终止流程，强依赖用 `ctx.abort()`
+2. **工厂函数，不用 class**：`agent()` 不是 `new Agent()`
+3. **不依赖 Zod**：参数定义用简写语法，框架内部转 JSON Schema
+4. **rules.reject 是 prompt 注入**：不做硬拦截，注入到 system prompt
+5. **步骤完成用 maxTurns 兜底**：不依赖 LLM 输出特殊标记
+6. **默认继续执行**：单步失败不终止流程，强依赖用 `ctx.abort()`
+7. **闭包封装**：用闭包共享状态，不暴露内部属性
+
+> 完整设计模式和原则见 [docs/principles.md](./docs/principles.md)
 
 ## 编码规范
 
@@ -55,3 +59,13 @@ src/
 - **文档在 `docs/` 目录**：设计文档、API 文档、路线图都在 docs/ 下
 - **logger 是工厂函数**：`logger()` 返回插件实例，不是直接导出实例
 - **delegate 工具返回 output 字符串**：team 层另外收集完整 RunResult
+
+## 规范文件
+
+本项目有三份 AI 编码工具规范文件，内容保持一致：
+
+- `CLAUDE.md` — Claude Code
+- `AGENTS.md` — Codex
+- `GEMINI.md` — Gemini CLI / Antigravity
+
+修改任一文件时，必须同步更新其他两份。

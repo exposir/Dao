@@ -76,9 +76,28 @@ await bot.chat("读一下 package.json 的内容")
 
 | 文件 | 内容 |
 |---|---|
-| `src/index.ts` | 导出 agent, tool, configure |
+| `src/index.ts` | 导出 agent, tool, configure, registerProvider |
 | `tsconfig.json` | TypeScript 配置 |
 | `package.json` | 补充 dependency（`ai`）+ peerDependencies（`@ai-sdk/deepseek` 等，用户按需安装） |
+
+### V0.1 依赖
+
+| 包名 | 类型 | 用途 |
+|---|---|---|
+| `ai` | dependency | Vercel AI SDK 核心（generateText, streamText） |
+| `@ai-sdk/deepseek` | peerDependency | DeepSeek 模型 |
+| `@ai-sdk/openai` | peerDependency | OpenAI + OpenAI 兼容 |
+| `@ai-sdk/google` | peerDependency | Gemini |
+| `@ai-sdk/anthropic` | peerDependency | Claude |
+| `@ai-sdk/moonshotai` | peerDependency | 月之暗面 Kimi |
+| `@ai-sdk/alibaba` | peerDependency | 通义千问 Qwen |
+| `@ai-sdk/zhipu` | peerDependency | 智谱 GLM |
+| `typescript` | devDependency | 类型检查 |
+| `tsup` | devDependency | 打包构建 |
+| `vitest` | devDependency | 单元测试 |
+| `dotenv` | devDependency | 加载 .env 文件 |
+
+> **peerDependency 说明**：`ai` 是核心接口，必装。7 个 `@ai-sdk/*` 是模型 provider，用户**只需安装自己用的那个**，例如只用 DeepSeek 就只装 `@ai-sdk/deepseek`。
 
 ### V0.1 交付物
 
@@ -112,6 +131,10 @@ await bot.chat("读一下 package.json 的内容")
 |---|---|
 | `src/engine.ts` | WaitStep：状态序列化 + SuspendEvent + resume() |
 | `src/agent.ts` | AgentInstance 添加 resume() 方法 |
+
+### V0.5 依赖
+
+无新增 npm 包。V0.5 全部是框架内部逻辑（rules 注入、steps 引擎、上下文压缩），基于 V0.1 已安装的 `ai` SDK 实现。
 
 ### V0.5 交付物
 
@@ -147,6 +170,10 @@ await bot.chat("读一下 package.json 的内容")
 |---|---|
 | `tools/fs.ts` | readFile, writeFile, listDir |
 | `tools/shell.ts` | runCommand, search |
+
+### V1.0 依赖
+
+无新增 npm 包。team()、plugin()、内置工具均为框架内部实现，不引入新依赖。内置工具使用 Node.js 标准库（`fs`、`child_process`）。
 
 ### V1.0 交付物
 

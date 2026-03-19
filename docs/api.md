@@ -178,7 +178,7 @@ interface TeamOptions {
   /** 团队成员，key 为成员名称 */
   members: Record<string, AgentInstance>
 
-  /** 插件列表（团队级别） */
+  /** 插件列表（挂在 lead 上，不注入 member） */
   plugins?: PluginInstance[]
 
   /**

@@ -18,6 +18,7 @@
 | [team.md](./team.md) | **团队系统** — lead 自动生成、成员通信、调度流程 |
 | [plugins.md](./plugins.md) | **插件系统** — hook 生命周期、示例插件、执行顺序 |
 | [model.md](./model.md) | **模型层** — provider 注册表、模型解析、默认模型、自定义 provider |
+| [principles.md](./principles.md) | **设计原则** — 设计思想、设计模式、核心原则 |
 
 ## 阶段规划
 
