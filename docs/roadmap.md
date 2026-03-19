@@ -184,6 +184,47 @@ await bot.chat("读一下 package.json 的内容")
 
 ---
 
+## 未来版本 — 企业级能力
+
+> API 已预留扩展点（见 `AgentOptions` 和 `ConfigOptions` 中的预留字段），以下能力按需实现。
+
+### 可观测性（Observability）
+
+- `ConfigOptions.telemetry`：tracing 链路追踪、token 用量统计
+- 自定义数据导出（OpenTelemetry 兼容）
+
+### 容错与自愈（Resilience）
+
+- `ConfigOptions.retry`：模型调用自动重试 + 指数退避
+- `AgentOptions.fallbackModel`：主模型失败自动切换备用
+
+### 上下文管理（Context Management）
+
+- `AgentOptions.contextWindow`：token 计数 + 自动截断/摘要
+- 可能引入依赖：`tiktoken`（token 计数库）
+
+### 安全边界（Safety Boundary）
+
+- `ConfigOptions.maxCostPerRun`：成本上限
+- 工具黑白名单（通过 `beforeToolCall` + `skip()` 插件实现）
+
+### 可测试性（Testability）
+
+- `AgentOptions.modelProvider`：注入 mock 模型
+- 模型响应录制/回放
+
+### 确认机制扩展（Confirm Extensibility）
+
+- `AgentOptions.onConfirm`：自定义确认回调
+- 支持 WebSocket、HTTP 回调等后端确认方式
+
+### MCP 协议支持
+
+- 作为 MCP Client 接入社区工具生态
+- `tools: [mcp("github"), mcp("filesystem")]`
+
+---
+
 ## 开发顺序
 
 ```

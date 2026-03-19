@@ -67,6 +67,38 @@ interface AgentOptions {
    * 用于注入全局指令
    */
   systemPrompt?: string
+
+  // === 以下为预留扩展点（V0.1 不实现） ===
+
+  /**
+   * 工具确认回调（预留）
+   * 当 tool 设置了 confirm: true 时调用，用户自定义确认方式
+   * 不提供时默认用 CLI stdin 确认
+   */
+  onConfirm?: (toolName: string, params: any) => Promise<boolean>
+
+  /**
+   * 备用模型（预留）
+   * 主模型调用失败时自动切换
+   */
+  fallbackModel?: string
+
+  /**
+   * 上下文窗口配置（预留）
+   * 用于自动截断和压缩
+   */
+  contextWindow?: {
+    maxTokens?: number
+    /** 超出时的策略：截断早期消息 / 摘要压缩 */
+    strategy?: "truncate" | "summarize"
+  }
+
+  /**
+   * 自定义模型提供者（预留）
+   * 传入已有的模型实例，跳过 resolveModel() 解析
+   * 测试时可注入 mock 模型，生产时可用于自定义模型
+   */
+  modelProvider?: LanguageModel
 }
 ```
 
@@ -484,6 +516,34 @@ interface ConfigOptions {
 
   /** 全局插件（所有 agent 自动加载） */
   globalPlugins?: PluginInstance[]
+
+  // === 以下为预留扩展点（V0.1 不实现） ===
+
+  /**
+   * 模型调用重试配置（预留）
+   */
+  retry?: {
+    /** 最大重试次数 @default 3 */
+    maxRetries?: number
+    /** 是否使用指数退避 @default true */
+    backoff?: boolean
+  }
+
+  /**
+   * 可观测性配置（预留）
+   * 启用后自动收集 tracing、token 用量等
+   */
+  telemetry?: {
+    enabled?: boolean
+    /** 自定义数据导出目标 */
+    exporter?: (event: any) => void
+  }
+
+  /**
+   * 成本上限（预留）
+   * 单次 run 超过限额自动停止
+   */
+  maxCostPerRun?: number
 }
 ```
 
