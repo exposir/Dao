@@ -15,20 +15,20 @@
 ```
 agent.run("任务")
   │
-  ├─ beforeInput(message)
+  ├─ beforeInput(ctx)                ← ctx.message
   │
   ├─ [Agent Loop 开始]
   │   │
-  │   ├─ beforeModelCall(prompt, messages)
+  │   ├─ beforeModelCall(ctx)        ← ctx.prompt
   │   │
   │   ├─ [模型调用]
   │   │
-  │   ├─ afterModelCall(response)
+  │   ├─ afterModelCall(ctx)         ← ctx.response
   │   │
   │   ├─ [如果有工具调用]
-  │   │   ├─ beforeToolCall(toolName, params)
+  │   │   ├─ beforeToolCall(ctx)     ← ctx.tool, ctx.params
   │   │   ├─ [工具执行]
-  │   │   └─ afterToolCall(toolName, result)
+  │   │   └─ afterToolCall(ctx)      ← ctx.tool, ctx.result
   │   │
   │   └─ [循环直到完成]
   │

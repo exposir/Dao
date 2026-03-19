@@ -49,6 +49,7 @@ function createAutoLead(members: Record<string, AgentInstance>, maxRounds: numbe
   // 3. 创建 lead Agent
   return agent({
     role: "团队调度员",
+    maxTurns: maxRounds,
     systemPrompt: `你是一个团队的调度员。你的团队成员有：
 ${memberDescriptions}
 
@@ -128,7 +129,7 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
     leadAgent = createAutoLead(members, maxRounds)
   }
 
-  // 2. 注入团队级插件（挂在 lead 上，监控整个团队执行过程）
+  // 2. 注入团队级插件（本质是挂在 lead 上的 agent 级插件）
   // member 的插件由 member 自己管理，team plugins 不会注入到 member
   if (plugins.length) {
     leadAgent = agent({ ...leadAgent.getConfig(), plugins: [...(leadAgent.getConfig().plugins || []), ...plugins] })

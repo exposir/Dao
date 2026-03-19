@@ -401,7 +401,7 @@ interface PluginOptions {
   /** Hook 函数 */
   hooks?: {
     /** 用户输入前 */
-    beforeInput?: (ctx: HookContext) => void | Promise<void>
+    beforeInput?: (ctx: HookContext & { message: string }) => void | Promise<void>
 
     /** 模型调用前 */
     beforeModelCall?: (ctx: HookContext & { prompt: string }) => void | Promise<void>

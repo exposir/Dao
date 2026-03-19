@@ -154,5 +154,6 @@ const bot = agent({ model: "baidu/ernie-4.0" })
 | `@ai-sdk/anthropic` | Claude |
 | `@ai-sdk/moonshotai` | 月之暗面 Kimi |
 | `@ai-sdk/alibaba` | 通义千问 Qwen |
+| `@ai-sdk/zhipu` | 智谱 GLM |
 
 按需安装。Dao 的 `package.json` 中这些作为 `peerDependencies`，用户只安装自己需要的 provider。
