@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest"
-import { configure, getGlobalConfig, resetConfig } from "./config.js"
+import { configure, getGlobalConfig, resetConfig } from "../src/config.js"
 
 describe("configure()", () => {
   beforeEach(() => {

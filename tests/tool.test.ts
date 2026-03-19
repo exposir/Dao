@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { tool, paramsToJsonSchema } from "./tool.js"
+import { tool, paramsToJsonSchema } from "../src/tool.js"
 
 describe("paramsToJsonSchema", () => {
   it("应该把简写参数转为 JSON Schema", () => {

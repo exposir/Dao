@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { registerProvider, resolveModel, detectDefaultModel, getProviderNames } from "./model.js"
+import { registerProvider, resolveModel, detectDefaultModel, getProviderNames } from "../src/model.js"
 
 describe("model 层", () => {
   // 保存原始环境变量

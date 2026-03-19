@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, vi } from "vitest"
-import { runSteps, AbortError } from "./engine.js"
-import type { AgentInstance, StepContext } from "./types.js"
+import { runSteps, AbortError } from "../src/engine.js"
+import type { AgentInstance, StepContext } from "../src/types.js"
 
 // mock agent
 function mockAgent(): AgentInstance {

@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, vi } from "vitest"
-import { plugin, PluginManager, logger } from "./plugin.js"
-import type { AgentInstance, PluginInstance } from "./types.js"
+import { plugin, PluginManager, logger } from "../src/plugin.js"
+import type { AgentInstance, PluginInstance } from "../src/types.js"
 
 // mock agent
 function mockAgent(): AgentInstance {

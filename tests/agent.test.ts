@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, vi } from "vitest"
-import { agent } from "./agent.js"
-import type { AgentOptions } from "./types.js"
+import { agent } from "../src/agent.js"
+import type { AgentOptions } from "../src/types.js"
 
 describe("agent()", () => {
   it("应该返回 AgentInstance 对象", () => {

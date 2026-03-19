@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { compileRules } from "./rules.js"
+import { compileRules } from "../src/rules.js"
 
 describe("compileRules()", () => {
   it("空 rules 应该返回空字符串", () => {
