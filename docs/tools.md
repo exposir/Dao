@@ -2,119 +2,118 @@
 
 ---
 
-## 1. 两种定义方式
+## 1. 工具定义
 
-### 1.1 普通函数（推荐）
+Dao 统一使用 `tool()` 函数定义工具，传入一个对象。
 
-```typescript
-/**
- * 读取文件内容
- * @param path 文件路径
- * @returns 文件内容
- */
-function readFile(path: string): string {
-  return fs.readFileSync(path, "utf-8")
-}
-
-const bot = agent({ tools: [readFile] })
-```
-
-### 1.2 tool() 显式定义
+### 基础用法
 
 ```typescript
+import { tool } from "dao"
+
 const readFile = tool({
   name: "readFile",
   description: "读取文件内容",
-  params: { path: String },
+  params: { path: "文件路径" },
   run: ({ path }) => fs.readFileSync(path, "utf-8"),
+})
+
+const search = tool({
+  name: "search",
+  description: "搜索文件内容",
+  params: { query: "搜索关键词", dir: "搜索目录" },
+  run: ({ query, dir }) => grep(query, dir),
+})
+```
+
+参数值是字符串时，默认类型为 `string`。
+
+### 需要用户确认
+
+```typescript
+const writeFile = tool({
+  name: "writeFile",
+  description: "写入文件",
+  params: { path: "文件路径", content: "文件内容" },
+  run: ({ path, content }) => fs.writeFileSync(path, content),
   confirm: true,
+})
+```
+
+### 非 string 类型
+
+```typescript
+const deleteFiles = tool({
+  name: "deleteFiles",
+  description: "批量删除文件",
+  params: {
+    paths: { type: "array", description: "文件路径列表" },
+    force: { type: "boolean", description: "是否强制" },
+  },
+  run: ({ paths, force }) => ...,
 })
 ```
 
 ---
 
-## 2. 自动推导机制
+## 2. 参数转换机制
 
-### 推导流程
+### 简写 → JSON Schema
 
+框架内部自动将简写参数转为 JSON Schema，通过 Vercel AI SDK 的 `jsonSchema()` 传给模型：
+
+```typescript
+// 用户写的
+{ path: "文件路径", content: "文件内容" }
+
+// 框架自动转为
+{
+  type: "object",
+  properties: {
+    path: { type: "string", description: "文件路径" },
+    content: { type: "string", description: "文件内容" },
+  },
+  required: ["path", "content"]
+}
 ```
-普通函数传入 tools
-  │
-  ├─ 提取函数名 → name
-  ├─ 提取 JSDoc 注释 → description
-  ├─ 提取 TypeScript 参数类型 → params schema
-  └─ 函数本身 → run
-```
 
-### 类型映射
+### 转换规则
 
-| TypeScript 类型 | JSON Schema 类型 |
+| 用户写法 | 转换结果 |
 |---|---|
-| `string` | `{ type: "string" }` |
-| `number` | `{ type: "number" }` |
-| `boolean` | `{ type: "boolean" }` |
-| `string[]` | `{ type: "array", items: { type: "string" } }` |
-| `{ key: type }` | `{ type: "object", properties: {...} }` |
-| `key?: type` | 非 required |
+| `"描述"` | `{ type: "string", description: "描述" }` + required |
+| `{ type: "number", description: "..." }` | 原样保留 + required |
+| `{ type: "boolean", description: "...", optional: true }` | 原样保留 + 不加 required |
+| `{ type: "array", description: "...", items: { type: "string" } }` | 原样保留 |
 
-### 实现方案
-
-**V1 方案**：使用 TypeScript Compiler API 在构建时提取类型信息，生成 schema 文件。
-
-**备选方案**：运行时使用 `Function.toString()` + 正则提取参数名，配合 JSDoc 注释。
+### 实现
 
 ```typescript
-// 构建时生成的 schema（示意）
-const readFileSchema = {
-  name: "readFile",
-  description: "读取文件内容",
-  parameters: {
-    type: "object",
-    properties: {
-      path: { type: "string", description: "文件路径" }
-    },
-    required: ["path"]
-  }
-}
-```
+function paramsToJsonSchema(params: ParamsDef): JSONSchema {
+  const properties: Record<string, any> = {}
+  const required: string[] = []
 
----
-
-## 3. 工具注册表
-
-```typescript
-class ToolRegistry {
-  private tools: Map<string, ToolInstance> = new Map()
-
-  /** 注册工具 */
-  register(tool: Function | ToolInstance): void {
-    if (typeof tool === "function") {
-      const resolved = inferToolSchema(tool)
-      this.tools.set(resolved.name, resolved)
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") {
+      // 简写：字符串描述 → string 类型
+      properties[key] = { type: "string", description: value }
+      required.push(key)
     } else {
-      this.tools.set(tool.name, tool)
-    }
-  }
-
-  /** 查找工具 */
-  get(name: string): ToolInstance | undefined {
-    return this.tools.get(name)
-  }
-
-  /** 生成 Vercel AI SDK 格式的 tools 对象 */
-  toAISDKTools(): Record<string, CoreTool> {
-    const result: Record<string, CoreTool> = {}
-    for (const [name, tool] of this.tools) {
-      result[name] = {
-        description: tool.description,
-        parameters: tool.schema,
-        execute: tool.execute,
+      // 完整：对象定义
+      properties[key] = {
+        type: value.type,
+        description: value.description,
+        ...(value.items && { items: value.items }),
       }
+      if (!value.optional) required.push(key)
     }
-    return result
   }
+
+  return { type: "object", properties, required }
 }
 ```
+
+> **不依赖 Zod。** 用户不需要安装 Zod，不需要写 `z.object()`。
 
 ---
 

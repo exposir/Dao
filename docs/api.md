@@ -264,13 +264,13 @@ tool({
 
 ---
 
-## 3. tool(options) → ToolInstance
-
-显式定义一个工具。
+## 3. tool() — 定义工具
 
 ### 类型定义
 
 ```typescript
+function tool(options: ToolOptions): ToolInstance
+
 interface ToolOptions {
   /** 工具名称 */
   name: string
@@ -278,12 +278,8 @@ interface ToolOptions {
   /** 工具描述，会展示给 LLM */
   description: string
 
-  /** 
-   * 参数定义
-   * 简写：{ key: Type }
-   * 完整：使用 Zod schema（可选）
-   */
-  params: Record<string, any> | ZodSchema
+  /** 参数定义 */
+  params: ParamsDef
 
   /** 执行函数 */
   run: (params: any, ctx?: ToolContext) => any | Promise<any>
@@ -293,58 +289,80 @@ interface ToolOptions {
    * @default false
    */
   confirm?: boolean
-
-  /**
-   * 是否在确认时展示参数
-   * @default true
-   */
-  showParams?: boolean
-}
-
-interface ToolContext {
-  /** 当前 Agent 实例 */
-  agent: AgentInstance
-
-  /** 中止执行 */
-  abort: (reason?: string) => void
-}
-
-type ToolInstance = {
-  /** 工具标识 */
-  __type: "tool"
-  name: string
-  description: string
-  schema: JSONSchema
-  execute: (params: any) => Promise<any>
-  confirm: boolean
 }
 ```
 
-### 普通函数自动推导
-
-当 `tools` 中传入普通函数时，框架自动推导：
+### 参数定义（ParamsDef）
 
 ```typescript
 /**
- * 读取文件内容
- * @param path 文件路径
- * @returns 文件内容字符串
+ * 参数定义支持两种格式：
+ * - 简写：{ key: "描述" } — 默认类型为 string
+ * - 完整：{ key: { type: "...", description: "..." } } — 指定类型
  */
-function readFile(path: string): string {
-  return fs.readFileSync(path, "utf-8")
-}
+type ParamsDef = Record<string, string | ParamSpec>
 
-// 框架自动推导为：
-// name: "readFile"
-// description: "读取文件内容"（从 JSDoc 提取）
-// params: { path: { type: "string", description: "文件路径" } }
+interface ParamSpec {
+  type: "string" | "number" | "boolean" | "array" | "object"
+  description: string
+  optional?: boolean
+  items?: { type: string }
+}
 ```
 
-推导规则：
-1. `name` ← 函数名
-2. `description` ← JSDoc 第一行注释
-3. `params` ← TypeScript 参数类型 + `@param` 注释
-4. `run` ← 函数本身
+### 示例
+
+```typescript
+import { tool } from "dao"
+
+// 基础用法
+const readFile = tool({
+  name: "readFile",
+  description: "读取文件",
+  params: { path: "文件路径" },
+  run: ({ path }) => fs.readFileSync(path, "utf-8"),
+})
+
+// 需要确认
+const writeFile = tool({
+  name: "writeFile",
+  description: "写入文件",
+  params: { path: "文件路径", content: "文件内容" },
+  run: ({ path, content }) => fs.writeFileSync(path, content),
+  confirm: true,
+})
+
+// 非 string 类型
+const deleteFiles = tool({
+  name: "deleteFiles",
+  description: "批量删除",
+  params: {
+    paths: { type: "array", description: "文件列表" },
+    force: { type: "boolean", description: "强制删除" },
+  },
+  run: ({ paths, force }) => ...,
+})
+```
+
+### 内部转换
+
+框架自动将简写参数转为 JSON Schema：
+
+```typescript
+// 用户写的
+{ path: "文件路径" }
+
+// 框架转为
+{
+  type: "object",
+  properties: {
+    path: { type: "string", description: "文件路径" }
+  },
+  required: ["path"]
+}
+```
+
+> 不需要 Zod。所有 API 统一传一个对象。
 
 ---
 

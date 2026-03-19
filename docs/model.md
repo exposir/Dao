@@ -6,7 +6,7 @@
 
 - 基于 Vercel AI SDK，不重新造轮子
 - 统一 `provider/model` 字符串格式
-- 中国模型优先支持
+- 开源模型优先支持
 - 开发者只需配置 `.env`，零代码接入
 
 ---
@@ -24,7 +24,7 @@ interface ProviderEntry {
 }
 
 const PROVIDERS: Record<string, ProviderEntry> = {
-  // 中国模型（优先）
+  // 开源模型（优先）
   deepseek: {
     create: (key) => createDeepSeek({ apiKey: key }),
     envKey: "DEEPSEEK_API_KEY",
@@ -46,7 +46,7 @@ const PROVIDERS: Record<string, ProviderEntry> = {
     defaultModel: "glm-4-plus",
   },
 
-  // 国际模型
+  // 商业模型
   openai: {
     create: (key) => createOpenAI({ apiKey: key }),
     envKey: "OPENAI_API_KEY",
@@ -118,7 +118,7 @@ function getDefaultModel(): string {
 }
 ```
 
-> **中文优先体现**：默认模型优先检查中国模型的 API Key。
+> **开源模型优先**：默认模型优先检查开源模型的 API Key。
 
 ---
 

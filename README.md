@@ -2,15 +2,14 @@
 
 > 大道至简的 AI Agent 框架
 
-Dao 是一个中文优先、渐进式的 TypeScript AI Agent 框架。
+Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。
 
 ## 特性
 
 - 🎯 **描述角色，而非配置机器** — 用 `role`/`tools`/`steps`/`rules` 描述你的 Agent
 - 📈 **渐进式复杂度** — 3 行代码起步，按需扩展
-- 🇨🇳 **中文优先** — 中文文档、符合中国开发者直觉
 - 🔌 **插件生态** — 核心精简，能力通过插件扩展
-- 🤖 **多模型支持** — DeepSeek / OpenAI / Gemini 开箱即用
+- 🤖 **开源模型友好** — DeepSeek / Qwen / Kimi 开箱即用
 
 ## 快速开始
 

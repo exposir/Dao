@@ -2,20 +2,19 @@
 
 ## 一、项目定位
 
-**Dao** 是一个中文优先、渐进式的 TypeScript AI Agent 框架。
+**Dao** 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。
 
-> **一句话定位：Agent 领域的 Vue。**
+> **直觉优先 · 渐进式 · 开源模型友好**
 
 ```typescript
 import { agent } from "dao"
 
 const bot = agent({ model: "deepseek/deepseek-chat" })
 await bot.chat("你好")
-```
 
 ### 目标用户
 
-- 中国 TypeScript / 前端开发者
+- TypeScript / 前端开发者
 - 想用 AI Agent 但被 Mastra / LangChain 吓退的人
 - 想从简单场景起步、逐步构建复杂应用的团队
 
@@ -25,7 +24,7 @@ await bot.chat("你好")
 |---|---|
 | Mastra 太重（28 个包，agent.ts 5375 行） | 核心精简，一个包搞定 |
 | Vercel AI SDK 太薄（没有 Loop/Memory/权限） | 内置 Agent Loop、权限、策略 |
-| 没有中文优先的 TS Agent 框架 | 第一个 |
+| 没有真正直觉的 TS Agent 框架 | API 望文生义，开箱即用 |
 | API 不直觉（`getDefaultGenerateOptionsLegacy()`） | `role`/`tools`/`steps`，望文生义 |
 | 从简单到复杂，门槛断崖式上升 | 渐进式，复杂度线性增长 |
 
@@ -53,7 +52,7 @@ Dao 让你"描述一个角色"：
 // ✅ Dao：你在想"这个人干什么、能用什么、怎么干"
 const reviewer = agent({
   role: "代码审查员",
-  tools: [readFile, listDir],
+  tools: [readFile, listDir],    // tool() 定义的工具
   steps: ["分析", "审查", "总结"],
   rules: { reject: ["修改代码"] },
   memory: true,
@@ -69,11 +68,11 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
  简单 ──────────────────────────────────────────────────────────► 复杂
 ```
 
-### 2.3 中文优先
+### 2.3 直觉优先
 
-- **中文文档**：所有文档中文优先
-- **API 望文生义**：`tools`、`steps`、`rules`——前端开发者全认识
+- **API 望文生义**：`tools`、`steps`、`rules`——开发者全认识
 - **开箱即用**：默认配置就够用，不需要先搞懂 10 个概念
+- **开源模型友好**：DeepSeek、Qwen 等开源模型开箱即用
 
 ---
 
@@ -90,7 +89,7 @@ const bot = agent({
   model: "deepseek/deepseek-chat", // 模型（provider/model 格式）
 
   // 能力
-  tools: [readFile, writeFile],    // 可用工具（普通函数 or tool()）
+  tools: [readFile, writeFile],    // 可用工具（tool() 定义）
 
   // 工作方式
   steps: [                         // 步骤列表（可选）
@@ -164,27 +163,41 @@ await squad.run("给项目添加用户登录功能")
 
 > **架构说明**：`team()` 底层是单 Agent 架构——lead 做决策，members 被调用。但开发者看到的是"团队协作"。
 
-### 3.3 tool() — 自定义工具
+### 3.3 tool() — 定义工具
 
 ```typescript
-// 方式一：直接传普通函数（自动推导 schema）
-function readFile(path: string): string {
-  return fs.readFileSync(path, "utf-8")
-}
-
-const bot = agent({ tools: [readFile] })
-
-// 方式二：需要更多控制时用 tool()
 import { tool } from "dao"
 
+// 基础用法
 const readFile = tool({
   name: "readFile",
   description: "读取文件内容",
-  params: { path: String },
+  params: { path: "文件路径" },
   run: ({ path }) => fs.readFileSync(path, "utf-8"),
-  confirm: true,  // 执行前需要用户确认
+})
+
+// 需要确认时加 confirm
+const writeFile = tool({
+  name: "writeFile",
+  description: "写入文件",
+  params: { path: "文件路径", content: "文件内容" },
+  run: ({ path, content }) => fs.writeFileSync(path, content),
+  confirm: true,
+})
+
+// 非 string 类型时显式指定
+const deleteFiles = tool({
+  name: "deleteFiles",
+  description: "批量删除文件",
+  params: {
+    paths: { type: "array", description: "文件路径列表" },
+    force: { type: "boolean", description: "是否强制删除" },
+  },
+  run: ({ paths, force }) => ...,
 })
 ```
+
+> **设计原则**：所有 API 统一传一个对象。不需要 Zod，框架内部自动转为 JSON Schema。
 
 ### 3.4 完整示例：Agent 嵌套调用
 
@@ -270,18 +283,19 @@ await lead.run("写一篇前端技术趋势文章")
 ### 4.3 工具系统
 
 ```
-普通函数 → 
-  TypeScript 类型提取 → 
-    自动生成 JSON Schema → 
-      注册到 Agent → 
-        模型调用时匹配并执行
+tool() 定义 → 
+  简写参数转 JSON Schema → 
+    注册到 Agent → 
+      模型调用时匹配并执行
 ```
+
+> 不依赖 Zod，不依赖 TypeScript 类型推导。用户写 `{ path: "文件路径" }`，框架转为 `{ type: "object", properties: { path: { type: "string", description: "文件路径" } } }`。
 
 ### 4.4 模型层
 
-基于 Vercel AI SDK，统一 `provider/model` 格式。作为中文优先框架，Dao 优先支持中国主流模型：
+基于 Vercel AI SDK，统一 `provider/model` 格式。开源模型优先排列：
 
-#### 中国模型（优先支持）
+#### 开源 / 性价比模型
 
 | 模型 | provider | 用法 | 支持方式 |
 |---|---|---|---|
@@ -292,7 +306,7 @@ await lead.run("写一篇前端技术趋势文章")
 | **MiniMax** | 社区包 | `"minimax/minimax-m2"` | 社区 |
 | **百川 / Yi / 豆包** | OpenAI 兼容 | 通过 `openai-compatible` 接入 | 兼容 |
 
-#### 国际模型
+#### 商业模型
 
 | 模型 | 用法 |
 |---|---|
@@ -302,7 +316,7 @@ await lead.run("写一篇前端技术趋势文章")
 | **xAI Grok** | `"xai/grok-4"` |
 
 ```typescript
-// 中国模型用法示例
+// 开源模型用法示例
 const bot = agent({
   model: "deepseek/deepseek-chat",  // 默认推荐
 })
@@ -319,12 +333,12 @@ const qwen = agent({
 通过 `.env` 文件配置 API Key：
 
 ```env
-# 中国模型
+# 开源模型
 DEEPSEEK_API_KEY=sk-xxx
 MOONSHOT_API_KEY=sk-xxx
 ALIBABA_API_KEY=sk-xxx
 
-# 国际模型
+# 商业模型
 OPENAI_API_KEY=sk-xxx
 GOOGLE_API_KEY=xxx
 ```
@@ -388,16 +402,16 @@ const bot = agent({ plugins: [logger] })
 
 ### 6.2 核心差异化
 
-1. **唯一中文优先的 TS Agent 框架** — 搜遍全网无竞品
-2. **唯一行为描述式 API**（role/tools/steps/rules）
-3. **步骤列表替代流程图** — LLM 做决策，开发者给方向
-4. **`rules.reject` 内置权限** — 其他框架均无
+1. **唯一行为描述式 API**（role/tools/steps/rules）— 开发者描述角色，不是配置机器
+2. **步骤列表替代流程图** — LLM 做决策，开发者给方向
+3. **`rules.reject` 内置权限** — 其他框架均无
+4. **开源模型开箱即用** — DeepSeek、Qwen 默认支持
 
 ### 6.3 最接近的竞品分析
 
 | 框架 | 相似点 | Dao 的优势 |
 |---|---|---|
-| **VoltAgent** | 声明式、TS 原生、可观测性 | Dao 有 steps 引擎、rules 权限、中文生态 |
+| **VoltAgent** | 声明式、TS 原生、可观测性 | Dao 有 steps 引擎、rules 权限、更直觉的 API |
 | **easy-agent** | 极简、轻量 | Dao 有 team、steps、memory，能力完整 |
 | **KaibanJS** | 角色定义、多 Agent | Dao 用声明式步骤，KaibanJS 用看板管理 |
 | **PraisonAI** | 多 Agent、低代码 | Dao 是 TS 原生，PraisonAI 从 Python 移植 |
@@ -412,14 +426,14 @@ const bot = agent({ plugins: [logger] })
 
 - [ ] `agent()` API + Agent Loop
 - [ ] `team()` API + 单 Agent 调度
-- [ ] `tool()` API + 普通函数自动推导
+- [ ] `tool()` API（极简写法 + 自动转 JSON Schema）
 - [ ] `steps` 引擎（parallel / if / retry / wait）
 - [ ] `rules`（focus / reject）
 - [ ] `memory: true` 基础记忆
 - [ ] 多模型支持（DeepSeek / OpenAI / Gemini）
 - [ ] 流式输出（默认开启）
 - [ ] 插件系统（hooks）
-- [ ] 中文文档
+- [ ] 文档（中文先行，后续补充英文）
 
 ### 不做（后续版本）
 
@@ -439,7 +453,7 @@ dao/
 │   ├── index.ts          # 入口，导出 agent / team / tool
 │   ├── agent.ts          # agent() 实现
 │   ├── team.ts           # team() 实现
-│   ├── tool.ts           # tool() + 函数自动推导
+│   ├── tool.ts           # tool() + 简写参数转 JSON Schema
 │   ├── loop.ts           # Agent Loop 核心循环
 │   ├── engine.ts         # Steps 引擎
 │   ├── rules.ts          # Rules 权限判断
