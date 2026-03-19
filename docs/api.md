@@ -240,12 +240,15 @@ const squad = team({
 lead 内部会为每个 member 自动生成一个工具：
 
 ```typescript
-// 自动生成的工具示意
+// 自动生成的工具示意（返回 output 字符串给 lead，team 层另外收集完整 RunResult）
 tool({
   name: "delegate_to_planner",
   description: "委派任务给架构师。架构师的职责：分析需求、制定方案、拆分任务",
   params: { task: "任务描述" },
-  run: ({ task }) => planner.run(task),
+  run: async ({ task }) => {
+    const result = await planner.run(task)
+    return result.output  // 返回 output 给 lead
+  },
 })
 ```
 

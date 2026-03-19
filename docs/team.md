@@ -134,6 +134,8 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 }
 ```
 
+> **memberResults 收集机制**：team 层在生成 delegate 工具时，对每个 `member.run()` 做包装拦截，将完整的 `RunResult` 记录到内部数组中。delegate 工具返回给 lead 的只是 `result.output`（字符串），但 team 层保留了完整记录用于最终的 `TeamRunResult.memberResults`。
+
 ---
 
 ## 6. 错误处理
