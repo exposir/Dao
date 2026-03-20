@@ -10,7 +10,8 @@ Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。基于 Ver
 - 📈 **渐进式复杂度** — 3 行代码起步，按需扩展
 - 🤖 **开源模型友好** — DeepSeek / Qwen / Kimi 开箱即用
 - 🔌 **插件生态** — 核心精简，能力通过插件扩展
-- 🏢 **企业级预留** — 可观测性、容错、安全边界等接口已预留
+- 🛡️ **生产可靠** — 重试、超时、错误分类、Fallback 模型
+- ✅ **输出校验** — guardrail 代码级校验 + 自动重试
 
 ## 快速开始
 
@@ -23,17 +24,26 @@ await bot.chat("你好");
 
 ## 示例
 
-### 带工具的 Agent
+### 简单模式（goal + background）
 
 ```typescript
-const coder = agent({
-  role: "开发者",
-  tools: [readFile, writeFile],
+const auditor = agent({
+  goal: "找出代码中的 bug 和安全隐患",
+  background: "你有 10 年 TypeScript 经验",
+  tools: [readFile, listDir],
 });
-await coder.run("把 README.md 翻译成英文");
+await auditor.run("审查 src/ 目录");
 ```
 
-### 带步骤流程
+### 专家模式（systemPrompt）
+
+```typescript
+const bot = agent({
+  systemPrompt: "你是 JSON 格式化专家，只输出合法 JSON",
+});
+```
+
+### 带步骤流程 + 输出校验
 
 ```typescript
 const reviewer = agent({
@@ -41,30 +51,107 @@ const reviewer = agent({
   tools: [readFile, listDir],
   steps: [
     "了解项目结构",
-    { parallel: ["分析前端代码", "分析后端代码"] },
-    "生成审查报告",
+    { parallel: ["分析前端代码", "分析后端代码"], concurrency: 2 },
+    {
+      task: "生成审查报告",
+      output: "JSON 格式，包含 severity 和 message 字段",
+      validate: (r) => {
+        try { JSON.parse(r); return true }
+        catch { return "输出不是合法 JSON" }
+      },
+      maxRetries: 2,
+    },
+    { wait: true, reason: "等待用户确认" },
+    "根据用户反馈修改报告",
   ],
-  rules: {
-    focus: ["代码质量", "安全隐患"],
-    reject: ["修改代码"],
-  },
 });
-await reviewer.run("审查 src/ 目录");
+
+const promise = reviewer.run("审查 src/ 目录");
+// ... 等待 wait 步骤暂停后
+reviewer.resume({ approved: true });
+await promise;
 ```
 
-### 多 Agent 协作
+### 工具确认机制
+
+```typescript
+const bot = agent({
+  tools: [
+    tool({ name: "deleteFile", confirm: true, ... }),
+  ],
+  onConfirm: async (toolName, params) => {
+    return await ask(`确认执行 ${toolName}?`);
+  },
+});
+```
+
+### 容错配置
+
+```typescript
+const bot = agent({
+  model: "deepseek/deepseek-chat",
+  fallbackModel: "openai/gpt-4o",     // 主模型失败自动切换
+  retry: { maxRetries: 3 },           // 自动重试 + 指数退避
+  timeout: 30000,                     // 30 秒超时
+  maxTokens: 2000,                    // 限制输出长度
+});
+```
+
+### Agent 委派（无需 team）
+
+```typescript
+const researcher = agent({ role: "研究员", tools: [search] });
+const writer = agent({ role: "作家" });
+
+const lead = agent({
+  role: "项目经理",
+  delegates: { researcher, writer },
+});
+// lead 会自动调用 delegate 工具分配任务
+await lead.run("写一篇关于 AI Agent 的文章");
+```
+
+### 多 Agent 团队
 
 ```typescript
 import { agent, team } from "dao-ai";
 
-const planner = agent({ role: "架构师", tools: [readFile] });
-const coder = agent({ role: "开发者", tools: [readFile, writeFile] });
-const tester = agent({ role: "测试工程师", tools: [readFile, runCommand] });
-
 const squad = team({
-  members: { planner, coder, tester },
+  members: {
+    planner: agent({ role: "架构师" }),
+    coder: agent({ role: "开发者", tools: [readFile, writeFile] }),
+    tester: agent({ role: "测试工程师", tools: [runCommand] }),
+  },
 });
 await squad.run("给项目添加用户登录功能");
+```
+
+### 流式事件
+
+```typescript
+for await (const event of bot.runStream("分析代码")) {
+  switch (event.type) {
+    case "step_start": console.log(`▶ 步骤 ${event.data.index}`)
+    case "step_end":   console.log(`✓ 完成`)
+    case "tool_call":  console.log(`🔧 ${event.data.tool}`)
+    case "text":       process.stdout.write(event.data)
+    case "done":       console.log("完成")
+  }
+}
+```
+
+### 错误处理
+
+```typescript
+import { ModelError, ToolError, TimeoutError } from "dao-ai";
+
+try {
+  await bot.run("任务");
+} catch (e) {
+  if (e instanceof TimeoutError) console.log("超时");
+  if (e instanceof ModelError)   console.log("模型错误");
+  if (e instanceof ToolError)    console.log(`工具 ${e.toolName} 失败`);
+}
 ```
 
 ## 设计理念
@@ -76,46 +163,18 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 每一层只加一两行代码，复杂度线性增长。
 
-## 为什么选 Dao
-
-|            | **Dao**        | **Mastra**   | **Vercel AI SDK** | **LangGraph** |
-| ---------- | -------------- | ------------ | ----------------- | ------------- |
-| 上手时间   | **5 分钟**     | 30+ 分钟     | 10 分钟           | 60+ 分钟      |
-| 核心代码量 | < 3000 行      | 5000+ 行     | N/A               | N/A           |
-| 包数量     | **1 个**       | 28 个        | N/A               | N/A           |
-| API 范式   | 描述角色       | 配置基础设施 | 函数调用          | 画图          |
-| 多 Agent   | `team()`       | Network      | ❌                | Graph         |
-| 步骤编排   | `steps` 声明式 | 链式 API     | ❌                | 有向图        |
-| 行为约束   | `rules.reject` | ❌           | ❌                | ❌            |
-| 开源模型   | 开箱即用       | 需配置       | 需配置            | 需配置        |
-
 ## 路线图
 
-| 阶段     | 内容                                                                 | 状态      |
-| -------- | -------------------------------------------------------------------- | --------- |
-| **V0.1** | agent + tool + Agent Loop + 模型层 + 基础 memory                     | ✅ 完成   |
-| **V0.5** | steps 引擎 + rules + 上下文压缩 + wait/resume                        | ✅ 完成   |
-| **V1.0** | team + plugins + 内置工具 + 完整文档                                 | ✅ 完成   |
-| **未来** | 可观测性 · 容错重试 · Fallback 模型 · 成本控制 · MCP 协议 · RAG 接入 | 🔮 预留   |
-
-## 企业级能力预留
-
-API 已为以下能力预留扩展点，未来按需激活：
-
-```typescript
-agent({
-  fallbackModel: "openai/gpt-4o", // 主模型挂了自动切换
-  contextWindow: { maxTokens: 8000 }, // 上下文自动管理
-  onConfirm: (tool, params) => ask(user), // 自定义确认方式
-  modelProvider: mockModel, // 测试时注入 mock
-});
-
-configure({
-  retry: { maxRetries: 3, backoff: true }, // 模型调用自动重试
-  telemetry: { enabled: true }, // 链路追踪
-  maxCostPerRun: 0.5, // 单次成本上限
-});
-```
+| 阶段     | 内容                                         | 状态    |
+| -------- | -------------------------------------------- | ------- |
+| **V0.1** | agent + tool + Agent Loop + memory           | ✅      |
+| **V0.5** | steps + rules + parallel + if + wait/resume  | ✅      |
+| **V1.0** | team + plugins + 内置工具 + 文档             | ✅      |
+| **V1.1** | 重试 + 超时 + 错误分类 + maxTokens + 并发    | ✅      |
+| **V1.2** | goal/background + expected_output + guardrail| ✅      |
+| **V2.0** | confirm + 流式事件 + fallback + delegates    | ✅      |
+| **V2.1** | 结构化日志 + OpenTelemetry + 可测试性        | 📋      |
+| **V2.2** | 上下文管理 + 成本控制 + MCP                  | 📋      |
 
 ## 文档
 

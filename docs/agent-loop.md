@@ -47,30 +47,32 @@ Agent Loop 是 Dao 的核心执行循环。每个 Agent 的 `chat()` 和 `run()`
 ## 3. System Prompt 组装
 
 ```typescript
-function buildSystemPrompt(options: AgentOptions, context?: string): string {
+function buildSystemPrompt(options: AgentOptions): string {
+  // 专家模式：systemPrompt 存在时直接用，忽略 role/goal/background
+  if (options.systemPrompt) {
+    const rulesPrompt = compileRules(options.rules)
+    return rulesPrompt
+      ? `${options.systemPrompt}\n\n${rulesPrompt}`
+      : options.systemPrompt
+  }
+
   const parts: string[] = []
 
-  // 1. 自定义前缀
-  if (options.systemPrompt) {
-    parts.push(options.systemPrompt)
-  }
-
-  // 2. 角色定义
+  // 简单模式：拼接 role + goal + background
   if (options.role) {
-    parts.push(`你是一个${options.role}。`)
+    parts.push(`你的角色是：${options.role}`)
+  }
+  if (options.goal) {
+    parts.push(`你的目标是：${options.goal}`)
+  }
+  if (options.background) {
+    parts.push(`背景：${options.background}`)
   }
 
-  // 3. 规则注入
-  if (options.rules?.focus?.length) {
-    parts.push(`你应该重点关注以下方面：\n${options.rules.focus.map(f => `- ${f}`).join("\n")}`)
-  }
-  if (options.rules?.reject?.length) {
-    parts.push(`你绝对不能做以下事情：\n${options.rules.reject.map(r => `- ${r}`).join("\n")}`)
-  }
-
-  // 4. 步骤上下文（如果在 Steps 引擎中运行）
-  if (context) {
-    parts.push(context)
+  // 规则注入
+  const rulesPrompt = compileRules(options.rules)
+  if (rulesPrompt) {
+    parts.push(rulesPrompt)
   }
 
   return parts.join("\n\n")
@@ -192,9 +194,11 @@ const result = streamText({
 // agent.runStream() 返回的事件流
 for await (const event of agent.runStream("任务")) {
   switch (event.type) {
+    case "step_start":  // 步骤开始（steps 模式）
+    case "step_end":    // 步骤完成
+    case "tool_call":   // 工具调用结果
     case "text":        // 文本片段
     case "done":        // 全部完成
-    // 未来计划支持：step_start / step_end / error 等
   }
 }
 ```

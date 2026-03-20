@@ -178,13 +178,9 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 
 ---
 
-## 8. 计划中的能力
+## 8. Agent 级委派（delegates）
 
-以下功能尚未实现，API 设计可能调整。
-
-### 8.1 Agent 级委派（allow_delegation）
-
-当前委派只能在 `team()` 内通过 lead 使用 delegate 工具。计划支持单个 agent 直接委派任务给其他 agent，无需显式组建团队：
+V2.0 新增。无需 `team()`，单个 agent 可直接委派任务：
 
 ```typescript
 const researcher = agent({ role: "研究员" })

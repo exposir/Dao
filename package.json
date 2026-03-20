@@ -1,6 +1,6 @@
 {
   "name": "dao-ai",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Dao（道）— 大道至简的 AI Agent 框架",
   "type": "module",
   "main": "./dist/index.js",

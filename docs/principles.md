@@ -84,54 +84,48 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 
 ---
 
+## 已实现的进阶能力
+
+### 1. 容错与自愈（V1.1 ~ V2.0 ✅）
+
+- 模型调用自动重试 — `retry: { maxRetries }` + AI SDK 内置指数退避
+- 超时控制 — `timeout` + AbortController + TimeoutError
+- Fallback 模型 — `fallbackModel` 主模型失败自动切换
+- 错误分类 — ModelError / ToolError / TimeoutError
+
+### 2. 确认机制（V2.0 ✅）
+
+- `tool({ confirm: true })` 标记危险工具
+- `agent({ onConfirm })` 回调自定义确认方式（CLI / WebSocket / HTTP 等）
+
+### 3. 输出校验（V1.2 ✅）
+
+- `TaskStep.validate` 代码级校验 + 自动重试
+- `TaskStep.output` 输出预期拼入 prompt
+
+---
+
 ## 未来演进方向
 
-> 以下能力将在未来版本逐步引入。
+### 1. 可观测性（V2.1 📋）
 
-### 1. 可观测性（Observability）
+- Tracing：每次决策链路追踪
+- Token 用量监控
+- OpenTelemetry 集成
 
-目前只有 `logger()` 插件。生产级 Agent 需要：
+### 2. 上下文管理（V2.2 📋）
 
-- **Tracing**：每次决策链路追踪（哪个步骤、哪个工具、花了多少 token）
-- **Token 用量监控**：实时统计各模型的消耗
-- **执行时间统计**：识别性能瓶颈
+- Token 计数 + 自动截断/摘要（类型已预留 `contextWindow`）
+- 成本上限 `maxCostPerRun`
 
-### 2. 容错与自愈（Resilience）
+### 3. 安全边界
 
-目前只有 `maxTurns` 兜底和 `retry`。生产级 Agent 需要：
+- Prompt injection 防护
+- 工具权限分级
+- 敏感信息过滤
 
-- **模型调用自动重试**：带指数退避（exponential backoff）
-- **Fallback 模型**：主模型挂了自动切备用（如 DeepSeek → OpenAI）
-- **超时控制**：单次模型调用和整体执行的超时
+### 4. 可测试性（V2.1 📋）
 
-### 3. 上下文管理（Context Management）
-
-`memory: true` 只是内存数组。强大的 Agent 需要：
-
-- **Token 计数**：实时知道上下文还剩多少空间
-- **自动截断/摘要**：上下文快满时自动压缩早期对话
-- **长期记忆**：跨会话的知识持久化
-
-### 4. 安全边界（Safety Boundary）
-
-`rules.reject` 靠 prompt 注入不够。未来可能需要：
-
-- **工具白名单/黑名单**：硬拦截高危工具调用
-- **输出过滤**：检测敏感信息泄露
-- **成本上限**：最多花 $X，超了自动停止
-
-### 5. 可测试性（Testability）
-
-Agent 行为难以测试，需要：
-
-- **模型 Mock**：测试时不调用真实 API，用固定响应
-- **工具模拟**：mock 文件系统、命令执行等
-- **中间步骤断言**：验证 Agent 的决策过程，不只看最终输出
-- **快照测试**：prompt 变更后对比行为差异
-
-### 6. 确认机制扩展（Confirm Extensibility）
-
-`tool({ confirm: true })` 目前只适用于 CLI。后端场景需要：
-
-- **`onConfirm` 回调**：在 `AgentOptions` 或 `configure()` 中提供
-- **自定义确认方式**：WebSocket 推送、HTTP 回调、消息队列等
+- 模型 Mock（`modelProvider` 已支持注入）
+- 响应录制/回放
+- 中间步骤断言

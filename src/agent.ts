@@ -85,10 +85,15 @@ export function agent(options: AgentOptions): AgentInstance {
     }
   }
 
-  /**
-   * 执行单个字符串任务（直接走 runLoop，跳过 steps 引擎避免递归）
-   * 收集每步的 usage 用于汇总
-   */
+  // wait / resume 机制
+  let waitResolve: ((data?: any) => void) | null = null
+
+  function onWait(): Promise<any> {
+    return new Promise((resolve) => {
+      waitResolve = resolve
+    })
+  }
+
   const stepUsages: { promptTokens: number; completionTokens: number; totalTokens: number }[] = []
 
   async function executeTask(task: string): Promise<RunResult> {
@@ -133,12 +138,11 @@ export function agent(options: AgentOptions): AgentInstance {
             options.steps,
             instance,
             executeTask,
-            // onStepStart
             undefined,
-            // onStepEnd → 触发 afterStep hook
             async (step, _index, result) => {
               await pm.emit("afterStep", instance, { step, result })
             },
+            onWait,
           )
 
           const lastResult = stepResults[stepResults.length - 1]
@@ -238,6 +242,13 @@ export function agent(options: AgentOptions): AgentInstance {
 
       // 无 steps，直接走 runLoopStream
       yield* runLoopStream(options, task, [], instance)
+    },
+
+    resume(data?: any): void {
+      if (waitResolve) {
+        waitResolve(data)
+        waitResolve = null
+      }
     },
 
     clearMemory(): void {

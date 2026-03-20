@@ -33,6 +33,7 @@ export type {
   // Step
   Step,
   TaskStep,
+  WaitStep,
   StepContext,
   ParallelStep,
   ConditionalStep,

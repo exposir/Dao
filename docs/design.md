@@ -222,7 +222,7 @@ const lead = agent({
     ]},
     "根据调研结果制定文章大纲",
     (ctx) => writer.run(`按以下大纲写文章：${ctx.lastResult}`),
-    { wait: "请审查文章内容" },  // 未来计划
+    { wait: true, reason: "请审查文章内容" },
     "发布",
   ],
 })
@@ -275,7 +275,7 @@ await lead.run("写一篇前端技术趋势文章")
 | `"字符串"` | LLM 指令 | 交给 Agent Loop 执行 |
 | `{ parallel: [...] }` | 并行任务 | `Promise.allSettled()` |
 | `{ if, then, else?, retry? }` | 条件分支 | LLM 判断或代码判断，可带重试 |
-| `{ wait: "..." }` | 暂停等待 | suspend → 序列化→ 等待恢复（V0.5） |
+| `{ wait: true }` | 暂停等待 | suspend → 等待 resume() 恢复 |
 | `(ctx) => ...` | 自定义函数 | 直接执行 |
 
 > **设计原则**：90% 场景用声明式步骤，10% 复杂场景混入函数。

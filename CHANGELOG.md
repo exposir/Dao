@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.1 (2026-03-20)
+
+### Features
+
+- **wait/resume**: 暂停步骤 — `{ wait: true }` + `bot.resume(data)` 恢复执行
+
+### Docs
+
+- README 全面更新，补充 V1.1 ~ V2.0 所有新功能示例
+- API 文档同步 V1.1 ~ V2.0 新参数（retry / timeout / maxTokens / TaskStep / WaitStep / delegates / fallback / RunEvent 等）
+
 ## 2.0.0 (2026-03-20)
 
 ### Features

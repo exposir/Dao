@@ -103,36 +103,37 @@ interface AgentOptions {
    */
   systemPrompt?: string
 
-  // === 以下为预留扩展点 ===
+  // === V1.1：生产可靠性 ===
 
-  /**
-   * 工具确认回调（预留）
-   * 当 tool 设置了 confirm: true 时调用，用户自定义确认方式
-   * 不提供时默认用 CLI stdin 确认
-   */
+  /** 重试配置，AI SDK 内置指数退避 + 429 自动等待 @default { maxRetries: 2 } */
+  retry?: { maxRetries?: number }
+
+  /** 超时时间（毫秒），超时抛出 TimeoutError */
+  timeout?: number
+
+  /** 单次模型调用的最大输出 token 数 */
+  maxTokens?: number
+
+  // === V2.0：能力补全 ===
+
+  /** 工具确认回调，工具 confirm: true 时调用 */
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
 
-  /**
-   * 备用模型（预留）
-   * 主模型调用失败时自动切换
-   */
+  /** 备用模型，主模型失败后自动切换 */
   fallbackModel?: string
 
-  /**
-   * 上下文窗口配置（预留）
-   * 用于自动截断和压缩
-   */
+  /** 可委派的 Agent 列表，自动注入 delegate 工具 */
+  delegates?: Record<string, AgentInstance>
+
+  // === 预留扩展点 ===
+
+  /** 上下文窗口配置（预留） */
   contextWindow?: {
     maxTokens?: number
-    /** 超出时的策略：截断早期消息 / 摘要压缩 */
     strategy?: "truncate" | "summarize"
   }
 
-  /**
-   * 自定义模型提供者（预留）
-   * 传入已有的模型实例，跳过 resolveModel() 解析
-   * 测试时可注入 mock 模型，生产时可用于自定义模型
-   */
+  /** 自定义模型提供者，测试时可注入 mock */
   modelProvider?: LanguageModel
 }
 ```
@@ -143,26 +144,41 @@ interface AgentOptions {
 /** 步骤可以是以下任意类型 */
 type Step =
   | string                          // 字符串指令，交给 LLM 执行
+  | TaskStep                        // 任务步骤（带输出预期和校验）
+  | WaitStep                        // 等待步骤（暂停执行，等待 resume）
   | ParallelStep                    // 并行执行
   | ConditionalStep                 // 条件分支（可带 retry）
   | ((ctx: StepContext) => any)     // 自定义函数
 
+/** 任务步骤：带输出预期和校验 (V1.2) */
+interface TaskStep {
+  task: string
+  /** 输出预期，拼入 prompt 引导格式 */
+  output?: string
+  /** 输出校验，返回 true 通过，返回字符串为失败原因 */
+  validate?: (result: string) => boolean | string
+  /** 校验失败时重试次数 @default 0 */
+  maxRetries?: number
+}
+
+/** 等待步骤：暂停执行，等待 resume() 调用 */
+interface WaitStep {
+  wait: true
+  reason?: string
+}
+
 interface ParallelStep {
   parallel: (string | Step | (() => Promise<any>))[]
+  /** 并发限制 (V1.1) @default Infinity */
+  concurrency?: number
 }
 
 interface ConditionalStep {
-  /** 条件：字符串（LLM 判断）或函数（代码判断） */
   if: string | ((ctx: StepContext) => boolean | Promise<boolean>)
   then: string | Step
   else?: string | Step
-  /** 可选：失败时重试次数 */
   retry?: number
 }
-
-// WaitStep 计划在未来版本支持
-// interface WaitStep { wait: string }
-// AgentInstance 将新增 resume(data?: any): Promise<RunResult>
 ```
 
 ### StepContext
@@ -187,10 +203,10 @@ interface StepContext {
 
 ```typescript
 interface AgentInstance {
-  /** 对话模式：单轮问答，保持上下文 */
+  /** 对话模式 */
   chat(message: string): Promise<string>
 
-  /** 任务模式：执行任务直到完成 */
+  /** 任务模式 */
   run(task: string): Promise<RunResult>
 
   /** 流式对话 */
@@ -198,6 +214,9 @@ interface AgentInstance {
 
   /** 流式任务执行 */
   runStream(task: string): AsyncIterable<RunEvent>
+
+  /** 恢复被 wait 步骤暂停的执行 */
+  resume(data?: any): void
 
   /** 清除记忆 */
   clearMemory(): void
@@ -207,24 +226,19 @@ interface AgentInstance {
 }
 
 interface RunResult {
-  /** 最终输出文本 */
   output: string
-
-  /** 模型调用轮次记录 */
   turns: { turn: string; result: any }[]
-
-  /** 使用的 token 数 */
   usage: { promptTokens: number; completionTokens: number; totalTokens: number }
-
-  /** 执行耗时（毫秒） */
   duration: number
 }
 
-// 流式事件（当前仅支持 text 和 done，未来计划扩展）
-interface RunEvent {
-  type: "text" | "done"
-  data: any
-}
+/** 流式事件 */
+type RunEvent =
+  | { type: "text"; data: string }
+  | { type: "done"; data: null }
+  | { type: "step_start"; data: { step: string; index: number } }
+  | { type: "step_end"; data: { step: string; index: number; result: any } }
+  | { type: "tool_call"; data: { tool: string; params: any; result: any } }
 ```
 
 ---

@@ -149,10 +149,52 @@ const tester = agent({ role: "测试工程师", tools: [runCommand] })
 
 const squad = team({
   members: { planner, coder, tester },
-  strategy: "auto",
 })
 
 await squad.run("给项目添加用户登录功能")
+```
+
+## 容错配置
+
+```typescript
+const bot = agent({
+  model: "deepseek/deepseek-chat",
+  fallbackModel: "openai/gpt-4o",     // 主模型失败自动切换
+  retry: { maxRetries: 3 },           // 自动重试
+  timeout: 30000,                     // 30 秒超时
+  maxTokens: 2000,                    // 限制输出长度
+})
+```
+
+## 输出校验
+
+```typescript
+const bot = agent({
+  steps: [
+    {
+      task: "生成 JSON 报告",
+      output: "JSON 格式，包含 severity 和 message",
+      validate: (r) => {
+        try { JSON.parse(r); return true }
+        catch { return "输出不是合法 JSON" }
+      },
+      maxRetries: 2,
+    },
+  ],
+})
+```
+
+## 工具确认
+
+```typescript
+const bot = agent({
+  tools: [
+    tool({ name: "deleteFile", confirm: true, ... }),
+  ],
+  onConfirm: async (toolName, params) => {
+    return await ask(`确认执行 ${toolName}？`)
+  },
+})
 ```
 
 ## 下一步

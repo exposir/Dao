@@ -132,21 +132,28 @@ if (rules.reject?.length) {
 
 > 不做硬拦截。LLM 负责判断什么工具调用违反了 reject 规则。后续版本可增加工具级精确拦截。
 
-### confirm 确认（预留）
+### confirm 确认
 
-> ⚠️ confirm 机制尚未实现。当前设置 `confirm: true` 会直接报错，请自行在 `run()` 中实现确认逻辑。
-
-未来计划的确认流程：
+工具设置 `confirm: true` 后，执行前会调用 `agent({ onConfirm })` 回调让用户确认：
 
 ```typescript
-// 未来 confirm 流程（尚未实现）
-if (tool.confirm) {
-  const confirmed = await requestUserConfirmation(toolName, params)
-  if (!confirmed) {
-    return { error: "用户拒绝了该操作" }
-  }
-}
+// 1. 工具标记 confirm
+const writeFile = tool({
+  name: "writeFile",
+  confirm: true,
+  ...
+})
+
+// 2. agent 提供确认回调
+const bot = agent({
+  tools: [writeFile],
+  onConfirm: async (toolName, params) => {
+    return await askUser(`允许执行 ${toolName}？`)
+  },
+})
 ```
+
+如果用户拒绝，工具返回“被用户拒绝执行”给 LLM，LLM 自行决定后续操作。
 
 ---
 
@@ -164,4 +171,4 @@ import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
 | `runCommand` | 执行命令 | false |
 | `search` | 搜索文件内容 | false |
 
-> **注意**：confirm 机制尚未实现（设置 `confirm: true` 会报错）。`writeFile` 和 `runCommand` 等高风险操作目前无内置确认保护，建议通过插件的 `beforeToolCall` + `skip()` 实现审批逻辑。
+> 内置工具默认不开启 confirm。高风险操作建议通过 `onConfirm` 回调或插件的 `beforeToolCall` + `skip()` 实现审批。

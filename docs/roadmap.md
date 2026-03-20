@@ -19,7 +19,7 @@
 - [x] `if/then/else` 条件分支
 - [x] `retry` 重试失败步骤
 - [x] `rules.reject` 通过 prompt 约束 LLM 行为
-- [ ] `wait` 暂停并恢复
+- [x] `wait` 暂停并恢复
 
 ## V1.0 ✅ 完整能力
 
