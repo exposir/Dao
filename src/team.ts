@@ -27,7 +27,6 @@ import { agent } from "./agent.js"
  *
  * const squad = team({
  *   members: { planner, coder, tester },
- *   strategy: "auto",
  * })
  * const result = await squad.run("添加用户登录功能")
  * ```
@@ -95,7 +94,7 @@ export function team(options: TeamOptions): TeamInstance {
     leadAgent = agent({
       role: "团队负责人",
       model: Object.values(members)[0]?.getConfig().model,
-      maxTurns: maxRounds,
+      maxTurns: maxRounds ?? 20,
       plugins,
       systemPrompt:
         `你是团队负责人，负责分解任务并委派给合适的成员执行。\n` +

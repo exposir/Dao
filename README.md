@@ -178,7 +178,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 ## 文档
 
-详细文档见 [docs/](./docs/README.md)。
+详细文档见 [docs/](./docs/index.md)。
 
 ## License
 

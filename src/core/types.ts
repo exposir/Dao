@@ -194,8 +194,6 @@ export interface AgentOptions {
 
   // === 预留扩展点 ===
 
-  /** 是否开启流式输出 */
-  stream?: boolean
   /** 工具确认回调，工具 confirm: true 时调用 */
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
   /** 备用模型，主模型失败后自动切换 */
@@ -295,14 +293,9 @@ export interface TeamRunResult {
 }
 
 /**
- * 团队流式事件。当前仅透传 lead 的 text/done 事件，member 固定为 "lead"。
- * @future 计划支持 delegate / member_start / member_end 等团队级事件
+ * 团队流式事件。透传 lead 的所有事件，附加 member 字段标识来源。
  */
-export interface TeamRunEvent {
-  type: "text" | "done"
-  member: string
-  data: any
-}
+export type TeamRunEvent = RunEvent & { member: string }
 
 // ============================================================
 // 5. 插件类型
@@ -369,16 +362,14 @@ export interface ConfigOptions {
 
   // === 预留扩展点 ===
 
-  /** 默认是否开启流式 */
-  defaultStream?: boolean
   /** 全局插件 */
   globalPlugins?: PluginInstance[]
-  /** 可观测性配置 @planned V2.0 */
+  /** 可观测性配置 @planned V2.1 */
   telemetry?: {
     enabled?: boolean
     exporter?: (event: any) => void
   }
-  /** 成本上限 @planned V2.0 */
+  /** 成本上限 @planned V2.2 */
   maxCostPerRun?: number
 }
 

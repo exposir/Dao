@@ -61,11 +61,20 @@ export async function runSteps(
     ctx.lastResult = lastResult
     ctx.history = history.map(h => ({ step: h.step, result: h.result }))
 
-    const result = await executeStep(step, ctx, executeTask, onWait)
-    lastResult = result
-
-    history.push({ step, result })
-    await onStepEnd?.(step, i, result)
+    try {
+      const result = await executeStep(step, ctx, executeTask, onWait)
+      lastResult = result
+      history.push({ step, result })
+      await onStepEnd?.(step, i, result)
+    } catch (err) {
+      // AbortError 由用户显式调用 ctx.abort()，应该中断整个流程
+      if (err instanceof AbortError) throw err
+      // 其他错误：记录失败，继续下一步
+      const errorResult = { error: err instanceof Error ? err.message : String(err) }
+      lastResult = errorResult
+      history.push({ step, result: errorResult })
+      await onStepEnd?.(step, i, errorResult)
+    }
   }
 
   return history

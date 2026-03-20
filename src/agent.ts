@@ -185,7 +185,7 @@ export function agent(options: AgentOptions): AgentInstance {
 
       try {
         let fullText = ""
-        for await (const event of runLoopStream(options, message, messageHistory, instance)) {
+        for await (const event of runLoopStream(options, message, messageHistory, instance, pm)) {
           if (event.type === "text") {
             fullText += event.data
             yield event.data
@@ -241,7 +241,7 @@ export function agent(options: AgentOptions): AgentInstance {
       }
 
       // 无 steps，直接走 runLoopStream
-      yield* runLoopStream(options, task, [], instance)
+      yield* runLoopStream(options, task, [], instance, pm)
     },
 
     resume(data?: any): void {

@@ -292,6 +292,7 @@ export async function* runLoopStream(
   task: string,
   messageHistory: ModelMessage[],
   agentInstance: AgentInstance,
+  pm?: PluginManager,
 ): AsyncIterable<RunEvent> {
   const globalConfig = getGlobalConfig()
   const maxTurns = options.maxTurns ?? globalConfig.defaultMaxTurns ?? 50
@@ -309,7 +310,7 @@ export async function* runLoopStream(
   const onToolCall = (name: string, params: any, result: any) => {
     toolCallEvents.push({ type: "tool_call", data: { tool: name, params, result } })
   }
-  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, undefined, options, onToolCall) : undefined
+  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, onToolCall) : undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,

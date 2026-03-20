@@ -86,12 +86,6 @@ interface AgentOptions {
   maxTurns?: number
 
   /**
-   * 是否开启流式输出
-   * @default true
-   */
-  stream?: boolean
-
-  /**
    * 温度参数
    * @default undefined（使用模型默认值）
    */
@@ -319,12 +313,8 @@ interface TeamRunResult {
   duration: number
 }
 
-// 团队流式事件（当前仅透传 lead 的 text/done，未来计划支持团队级事件）
-interface TeamRunEvent {
-  type: "text" | "done"
-  member: string  // 当前固定为 "lead"
-  data: any
-}
+// 团队流式事件：透传 lead 的所有事件 + member 字段
+type TeamRunEvent = RunEvent & { member: string }
 ```
 
 ### 调度机制
@@ -629,40 +619,21 @@ interface ConfigOptions {
    */
   defaultMaxTurns?: number
 
-  /**
-   * 默认是否开启流式
-   * @default true
-   */
-  defaultStream?: boolean
-
   /** 全局插件（所有 agent 自动加载） */
   globalPlugins?: PluginInstance[]
 
-  // === 以下为预留扩展点 ===
+  // === 预留扩展点 ===
 
   /**
-   * 模型调用重试配置（预留）
-   */
-  retry?: {
-    /** 最大重试次数 @default 3 */
-    maxRetries?: number
-    /** 是否使用指数退避 @default true */
-    backoff?: boolean
-  }
-
-  /**
-   * 可观测性配置（预留）
-   * 启用后自动收集 tracing、token 用量等
+   * 可观测性配置（V2.1 计划）
    */
   telemetry?: {
     enabled?: boolean
-    /** 自定义数据导出目标 */
     exporter?: (event: any) => void
   }
 
   /**
-   * 成本上限（预留）
-   * 单次 run 超过限额自动停止
+   * 成本上限（V2.2 计划）
    */
   maxCostPerRun?: number
 }

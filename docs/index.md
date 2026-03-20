@@ -28,11 +28,11 @@ features:
     details: DeepSeek / Qwen / Kimi 等开源模型开箱即用，一个环境变量搞定。
   - icon: 🔌
     title: 插件生态
-    details: 核心精简，能力通过插件扩展。可观测性、容错、安全边界等接口已预留。
+    details: 核心精简，能力通过插件扩展。7 个 Hook 覆盖全生命周期。
   - icon: 🚀
     title: 极致轻量
     details: 核心代码不到 3000 行，运行时仅 2 个依赖。一个包搞定。
   - icon: 🏢
-    title: 企业级预留
-    details: 重试机制、Fallback 模型、成本控制、链路追踪——接口已预留，按需激活。
+    title: 生产可靠
+    details: 自动重试、Fallback 模型、超时保护、错误分类、输出校验——不是预留，是已实现。
 ---
