@@ -10,6 +10,7 @@ import { runLoop, runLoopStream } from "./core/loop.js"
 import { runSteps } from "./engine.js"
 import { PluginManager } from "./plugin.js"
 import { tool } from "./tool.js"
+import { getGlobalConfig } from "./core/config.js"
 
 /**
  * 创建一个 Agent 实例
@@ -74,8 +75,13 @@ export function agent(options: AgentOptions): AgentInstance {
   // 对话历史（memory 用）
   let messageHistory: ModelMessage[] = []
 
-  // 插件管理器
-  const pm = new PluginManager(options.plugins)
+  // 插件管理器：合并全局插件 + 实例插件
+  const globalCfg = getGlobalConfig()
+  const allPlugins = [
+    ...(globalCfg.globalPlugins ?? []),
+    ...(options.plugins ?? []),
+  ]
+  const pm = new PluginManager(allPlugins)
   let initialized = false
 
   async function ensureInit() {
@@ -147,6 +153,19 @@ export function agent(options: AgentOptions): AgentInstance {
 
           const lastResult = stepResults[stepResults.length - 1]
 
+          // 检查是否所有步骤都失败
+          const allFailed = stepResults.every(s => s.result?.error)
+          let output: string
+          if (allFailed) {
+            output = stepResults
+              .map((s, i) => `步骤 ${i + 1} 失败：${s.result?.error}`)
+              .join("\n")
+          } else {
+            output = typeof lastResult?.result === "string"
+              ? lastResult.result
+              : JSON.stringify(lastResult?.result ?? "")
+          }
+
           // 汇总所有步骤的 token 用量
           const totalUsage = {
             promptTokens: stepUsages.reduce((s, u) => s + u.promptTokens, 0),
@@ -155,9 +174,7 @@ export function agent(options: AgentOptions): AgentInstance {
           }
 
           const result: RunResult = {
-            output: typeof lastResult?.result === "string"
-              ? lastResult.result
-              : JSON.stringify(lastResult?.result ?? ""),
+            output,
             turns: stepResults.map((s, i) => ({
               turn: `step-${i + 1}`,
               result: s.result,
@@ -199,6 +216,8 @@ export function agent(options: AgentOptions): AgentInstance {
             { role: "assistant", content: fullText },
           )
         }
+
+        await pm.emit("onComplete", instance, { result: { output: fullText, duration: 0, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
       } catch (err: any) {
         await pm.emit("onError", instance, { error: err })
         throw err
@@ -208,40 +227,48 @@ export function agent(options: AgentOptions): AgentInstance {
     async *runStream(task: string): AsyncIterable<RunEvent> {
       await ensureInit()
 
-      // 如果有 steps，走 steps 引擎
-      if (options.steps?.length) {
-        const events: RunEvent[] = []
+      try {
+        // 如果有 steps，走 steps 引擎
+        if (options.steps?.length) {
+          const events: RunEvent[] = []
 
-        const stepResults = await runSteps(
-          options.steps,
-          instance,
-          executeTask,
-          // onStepStart
-          (step, index) => {
-            const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
-            events.push({ type: "step_start", data: { step: stepName, index } })
-          },
-          // onStepEnd
-          async (step, index, result) => {
-            const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
-            events.push({ type: "step_end", data: { step: stepName, index, result } })
-            await pm.emit("afterStep", instance, { step, result })
-          },
-        )
+          const stepResults = await runSteps(
+            options.steps,
+            instance,
+            executeTask,
+            // onStepStart
+            (step, index) => {
+              const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
+              events.push({ type: "step_start", data: { step: stepName, index } })
+            },
+            // onStepEnd
+            async (step, index, result) => {
+              const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
+              events.push({ type: "step_end", data: { step: stepName, index, result } })
+              await pm.emit("afterStep", instance, { step, result })
+            },
+          )
 
-        // 发所有事件
-        for (const event of events) {
-          yield event
+          // 发所有事件
+          for (const event of events) {
+            yield event
+          }
+
+          const lastResult = stepResults[stepResults.length - 1]
+          yield { type: "text", data: lastResult?.result ?? "" }
+          yield { type: "done", data: null }
+
+          await pm.emit("onComplete", instance, { result: { output: lastResult?.result ?? "", duration: 0, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+          return
         }
 
-        const lastResult = stepResults[stepResults.length - 1]
-        yield { type: "text", data: lastResult?.result ?? "" }
-        yield { type: "done", data: null }
-        return
+        // 无 steps，直接走 runLoopStream
+        yield* runLoopStream(options, task, [], instance, pm)
+        await pm.emit("onComplete", instance, { result: { output: "", duration: 0, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+      } catch (err: any) {
+        await pm.emit("onError", instance, { error: err })
+        throw err
       }
-
-      // 无 steps，直接走 runLoopStream
-      yield* runLoopStream(options, task, [], instance, pm)
     },
 
     resume(data?: any): void {
@@ -262,4 +289,3 @@ export function agent(options: AgentOptions): AgentInstance {
 
   return instance
 }
-

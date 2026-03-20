@@ -82,7 +82,7 @@ export function team(options: TeamOptions): TeamInstance {
     const config = lead.getConfig()
     leadAgent = agent({
       ...config,
-      maxTurns: maxRounds ?? config.maxTurns,
+      maxTurns: maxRounds ?? config.maxTurns ?? 20,
       plugins: plugins ? [...(config.plugins ?? []), ...plugins] : config.plugins,
       tools: [...(config.tools ?? []), delegateTool],
       systemPrompt:

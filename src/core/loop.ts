@@ -325,6 +325,16 @@ export async function* runLoopStream(
     timeoutId = setTimeout(() => controller!.abort(), options.timeout)
   }
 
+  // 触发 beforeModelCall hook
+  if (pm) {
+    const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
+    if (skipped) {
+      if (timeoutId) clearTimeout(timeoutId)
+      yield { type: "done", data: null }
+      return
+    }
+  }
+
   try {
     const result = streamText({
       model,
@@ -352,6 +362,12 @@ export async function* runLoopStream(
     }
 
     if (timeoutId) clearTimeout(timeoutId)
+
+    // 触发 afterModelCall hook
+    if (pm) {
+      await pm.emit("afterModelCall", agentInstance, { response: "(stream)" })
+    }
+
     yield { type: "done", data: null }
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)

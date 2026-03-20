@@ -335,16 +335,19 @@ const squad = team({
 })
 ```
 
-lead 内部会为每个 member 自动生成一个工具：
+lead 内部自动获得一个通用 `delegate` 工具：
 
 ```typescript
-// 自动生成的工具示意（返回 output 字符串给 lead，team 层另外收集完整 RunResult）
+// 框架自动生成的委派工具（单个通用工具，通过 member 参数指定目标）
 tool({
-  name: "delegate_to_planner",
-  description: "委派任务给架构师。架构师的职责：分析需求、制定方案、拆分任务",
-  params: { task: "任务描述" },
-  run: async ({ task }) => {
-    const result = await planner.run(task)
+  name: "delegate",
+  description: "委派任务给团队成员执行。可用成员：planner(架构师), coder(开发者), tester(测试)",
+  params: {
+    member: "团队成员名称",
+    task: "要委派的任务描述",
+  },
+  run: async ({ member, task }) => {
+    const result = await members[member].run(task)
     return result.output  // 返回 output 给 lead
   },
 })
