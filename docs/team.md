@@ -169,10 +169,18 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
   // 3. 执行 lead
   const result = await leadAgent.run(task)
 
+  // 聚合 lead + 所有 member 的 token 用量
+  const allResults = Object.values(memberResults).flat()
+  const totalUsage = {
+    promptTokens: result.usage.promptTokens + allResults.reduce((s, r) => s + r.usage.promptTokens, 0),
+    completionTokens: result.usage.completionTokens + allResults.reduce((s, r) => s + r.usage.completionTokens, 0),
+    totalTokens: result.usage.totalTokens + allResults.reduce((s, r) => s + r.usage.totalTokens, 0),
+  }
+
   return {
     output: result.output,
     memberResults,
-    usage: result.usage,
+    usage: totalUsage,
     duration: result.duration,
   }
 }

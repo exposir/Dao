@@ -203,10 +203,13 @@ export function agent(options: AgentOptions): AgentInstance {
 
       try {
         let fullText = ""
+        let streamUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
         for await (const event of runLoopStream(options, message, messageHistory, instance, pm)) {
           if (event.type === "text") {
             fullText += event.data
             yield event.data
+          } else if (event.type === "done" && event.data?.usage) {
+            streamUsage = event.data.usage
           }
         }
 
@@ -218,7 +221,7 @@ export function agent(options: AgentOptions): AgentInstance {
           )
         }
 
-        await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+        await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: streamUsage } })
       } catch (err: any) {
         await pm.emit("onError", instance, { error: err })
         throw err
@@ -258,10 +261,18 @@ export function agent(options: AgentOptions): AgentInstance {
           }
 
           const lastResult = stepResults[stepResults.length - 1]
-          // 确保 text 事件 data 是 string
-          const outputText = typeof lastResult?.result === "string"
-            ? lastResult.result
-            : JSON.stringify(lastResult?.result ?? "")
+          // 检查是否所有步骤都失败（与 run() 逻辑一致）
+          const allFailed = stepResults.every(s => s.result?.error)
+          let outputText: string
+          if (allFailed) {
+            outputText = stepResults
+              .map((s, i) => `步骤 ${i + 1} 失败：${s.result?.error}`)
+              .join("\n")
+          } else {
+            outputText = typeof lastResult?.result === "string"
+              ? lastResult.result
+              : JSON.stringify(lastResult?.result ?? "")
+          }
           yield { type: "text", data: outputText }
           yield { type: "done", data: null }
 
@@ -276,11 +287,13 @@ export function agent(options: AgentOptions): AgentInstance {
 
         // 无 steps，直接走 runLoopStream
         let fullText = ""
+        let streamUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
         for await (const event of runLoopStream(options, task, [], instance, pm)) {
           if (event.type === "text") fullText += event.data
+          else if (event.type === "done" && event.data?.usage) streamUsage = event.data.usage
           yield event
         }
-        await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+        await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: streamUsage } })
       } catch (err: any) {
         await pm.emit("onError", instance, { error: err })
         throw err

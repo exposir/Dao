@@ -110,7 +110,7 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
 
   // TaskStep
   if (isTaskStep(step)) {
-    return await executeTaskStep(step, executeTask)
+    return await executeTaskStep(step, executeTask, ctx)
   }
 
   // 并行步骤
@@ -220,9 +220,13 @@ function isConditionalStep(step: any): step is ConditionalStep {
 /**
  * 执行 TaskStep（带 output 预期 + validate 校验 + maxRetries 重试）
  */
-async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn): Promise<string> {
-  // 拼装 prompt：task + output 预期 + lastResult
+async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn, ctx?: StepContext): Promise<string> {
+  // 拼装 prompt：task + lastResult + output 预期
   let prompt = step.task
+  if (ctx?.lastResult != null && ctx.lastResult !== "") {
+    const lastStr = typeof ctx.lastResult === "string" ? ctx.lastResult : JSON.stringify(ctx.lastResult)
+    prompt = `上一步的执行结果：\n${lastStr}\n\n当前步骤：${prompt}`
+  }
   if (step.output) {
     prompt += `\n\n期望输出：${step.output}`
   }

@@ -52,7 +52,7 @@ interface HookContext {
 
   /** 
    * 插件私有数据存储
-   * 每个插件有独立的 store，不同插件之间隔离
+   * 按插件 name 索引，同名插件实例共享同一个 store
    */
   store: Record<string, any>
 

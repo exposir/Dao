@@ -54,7 +54,7 @@ agent({ role, model, tools, steps, rules, memory })
 
 ### 3. 闭包封装模式（Closure Encapsulation）
 
-`createDelegateTools()` 返回 `{ tools, memberResults }`，内部用闭包共享状态。不暴露内部属性，不用 class 的 private。
+`team()` 内部通过闭包创建 delegate 工具和 memberResults。delegate 工具调用 `member.run()` 时自动收集结果到共享的 memberResults 对象。不暴露内部状态，不用 class 的 private。
 
 ### 4. 适配器模式（Adapter）
 
