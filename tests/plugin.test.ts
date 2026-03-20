@@ -13,6 +13,7 @@ function mockAgent(): AgentInstance {
     run: vi.fn(async () => ({ output: "mock", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 })),
     chatStream: vi.fn(async function* () { yield "mock" }),
     runStream: vi.fn(async function* () {}),
+    resume: vi.fn(),
     clearMemory: vi.fn(),
     getConfig: vi.fn(() => ({})),
   }

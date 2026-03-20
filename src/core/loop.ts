@@ -198,7 +198,16 @@ export async function runLoop(
 
     // 触发 afterModelCall hook
     if (pm) {
-      await pm.emit("afterModelCall", agentInstance, { response: result.text })
+      await pm.emit("afterModelCall", agentInstance, {
+        response: {
+          text: result.text,
+          usage: {
+            promptTokens: result.totalUsage?.inputTokens ?? 0,
+            completionTokens: result.totalUsage?.outputTokens ?? 0,
+            totalTokens: (result.totalUsage?.inputTokens ?? 0) + (result.totalUsage?.outputTokens ?? 0),
+          },
+        },
+      })
     }
 
     // 提取 token 用量
@@ -252,7 +261,14 @@ export async function runLoop(
 
         if (timeoutId) clearTimeout(timeoutId)
         if (pm) {
-          await pm.emit("afterModelCall", agentInstance, { response: fallbackResult.text })
+          const fallbackUsage = {
+            promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
+            completionTokens: fallbackResult.totalUsage?.outputTokens ?? 0,
+            totalTokens: (fallbackResult.totalUsage?.inputTokens ?? 0) + (fallbackResult.totalUsage?.outputTokens ?? 0),
+          }
+          await pm.emit("afterModelCall", agentInstance, {
+            response: { text: fallbackResult.text, usage: fallbackUsage },
+          })
         }
 
         const usage: TokenUsage = {
@@ -348,11 +364,13 @@ export async function* runLoopStream(
       stopWhen: stepCountIs(maxTurns),
     })
 
+    let fullText = ""
     for await (const part of result.textStream) {
       // 先发累积的 tool_call 事件
       while (toolCallEvents.length > 0) {
         yield toolCallEvents.shift()!
       }
+      fullText += part
       yield { type: "text", data: part }
     }
 
@@ -363,12 +381,23 @@ export async function* runLoopStream(
 
     if (timeoutId) clearTimeout(timeoutId)
 
-    // 触发 afterModelCall hook
-    if (pm) {
-      await pm.emit("afterModelCall", agentInstance, { response: "(stream)" })
+    // 获取真实用量
+    const totalUsage = await result.totalUsage
+    const usage = {
+      promptTokens: totalUsage?.inputTokens ?? 0,
+      completionTokens: totalUsage?.outputTokens ?? 0,
+      totalTokens: (totalUsage?.inputTokens ?? 0) + (totalUsage?.outputTokens ?? 0),
     }
 
-    yield { type: "done", data: null }
+    // 触发 afterModelCall hook（传真实输出和用量）
+    if (pm) {
+      await pm.emit("afterModelCall", agentInstance, {
+        response: { text: fullText, usage },
+      })
+    }
+
+    // done 事件带上 usage，让上层拿到真实用量
+    yield { type: "done", data: { usage } }
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)
 

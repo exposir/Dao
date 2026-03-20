@@ -215,18 +215,18 @@ steps: [
 
 | 场景 | 行为 |
 |---|---|
-| 步骤执行超时 | Grace Period → 强制结束该步骤 → 继续下一步 |
-| LLM 返回异常 | 重试 1 次 → 失败则标记步骤失败 → 继续下一步 |
+| 函数步骤 throw | try-catch 捕获 → 记录 `{ error: message }` → 继续下一步 |
+| LLM 返回异常 | 由 `runLoop()` 的 `retry.maxRetries` 控制重试（默认 2 次） → 失败则标记步骤失败 → 继续下一步 |
 | 工具调用失败 | 将错误信息反馈给 LLM → LLM 决定是否重试 |
-| 函数步骤 throw | 标记步骤失败 → 继续下一步 |
-| 所有步骤都失败 | RunResult.output 包含错误汇总 |
+| abort() 调用 | 抛出 AbortError → 中断整个流程 |
+| 所有步骤都失败 | `RunResult.output` 包含每步错误汇总 |
 
 **设计原则**：默认继续执行，不因单步失败终止整个流程。强依赖场景用 `abort` 显式中止：
 
 ```typescript
 steps: [
   "创建数据库表",
-  (ctx) => { if (!ctx.lastResult.success) ctx.abort("建表失败") },
+  (ctx) => { if (ctx.lastResult?.error) ctx.abort("建表失败") },
   "插入初始数据",
   "启动服务",
 ]

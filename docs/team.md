@@ -36,19 +36,24 @@ function createAutoLead(
     })
     .join("\n")
 
-  // 2. 创建 lead Agent（delegateTools 由外部 createDelegateTools 生成）
+  // 2. 创建单个 delegate 工具
+  const delegateTool = tool({
+    name: "delegate",
+    description: `将任务委派给团队成员。可用成员：\n${memberDescriptions}`,
+    params: { member: "Agent 名称", task: "任务描述" },
+    run: async ({ member, task }) => {
+      const memberAgent = members[member]
+      const result = await memberAgent.run(task)
+      return result.output
+    },
+  })
+
+  // 3. 创建 lead Agent
   return agent({
     role: "团队调度员",
-    maxTurns: maxRounds,
-    systemPrompt: `你是一个团队的调度员。你的团队成员有：
-${memberDescriptions}
-
-你需要根据任务需求，合理地分配任务给团队成员。
-规则：
-- 分析任务后决定委派顺序
-- 一个成员的输出可以作为另一个成员的输入
-- 所有成员完成后汇总结果`,
-    tools: delegateTools,
+    maxTurns: maxRounds ?? 20,
+    systemPrompt: `你是一个团队的调度员。...`,
+    tools: [delegateTool],
   })
 }
 ```
@@ -74,7 +79,7 @@ const squad = team({
 
 自定义 lead 时，框架仍然自动注入 delegate 工具，但 lead 的行为由用户的 `steps` 控制。
 
-> **maxRounds 语义**：`maxRounds` 等价于 lead Agent 的 `maxTurns`——即 lead 的模型调用轮次上限。由 lead 的 Agent Loop 维护，到达时触发 Grace Period。每次 delegate 调用算一轮。
+> **maxRounds 语义**：`maxRounds` 等价于 lead Agent 的 `maxTurns`——即 lead 的模型调用轮次上限，默认值为 20。到达上限时 AI SDK 直接停止循环。
 
 ---
 
@@ -127,43 +132,53 @@ const delegateTool = tool({
 
 ```typescript
 async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResult> {
-  const { lead, members, maxRounds = 20, plugins = [] } = options
+  const { members, lead, maxRounds, plugins } = options
 
-  // 1. 生成 delegate 工具（同时获得 memberResults 引用）
-  const { tools: delegateTools, memberResults } = createDelegateTools(members)
+  // 1. 创建单个通用 delegate 工具
+  const memberResults: Record<string, RunResult[]> = {}
+  const delegateTool = tool({
+    name: "delegate",
+    description: `将任务委派给团队成员。`,
+    params: { member: "Agent 名称", task: "任务描述" },
+    run: async ({ member, task }) => {
+      const result = await members[member].run(task)
+      // 自动收集 memberResults
+      if (!memberResults[member]) memberResults[member] = []
+      memberResults[member].push(result)
+      return result.output
+    },
+  })
 
-  // 2. 创建 lead
+  // 2. 创建 lead（自定义或自动生成）
   let leadAgent: AgentInstance
   if (lead) {
     const config = lead.getConfig()
     leadAgent = agent({
       ...config,
-      maxTurns: maxRounds,
-      tools: [...(config.tools || []), ...delegateTools],
+      maxTurns: maxRounds ?? config.maxTurns ?? 20,
+      tools: [...(config.tools || []), delegateTool],
     })
   } else {
-    leadAgent = createAutoLead(members, maxRounds, delegateTools)
+    leadAgent = agent({
+      role: "团队负责人",
+      maxTurns: maxRounds ?? 20,
+      tools: [delegateTool],
+    })
   }
 
-  // 3. 注入团队级插件（本质是挂在 lead 上的 agent 级插件）
-  if (plugins.length) {
-    leadAgent = agent({ ...leadAgent.getConfig(), plugins: [...(leadAgent.getConfig().plugins || []), ...plugins] })
-  }
-
-  // 4. 执行 lead
+  // 3. 执行 lead
   const result = await leadAgent.run(task)
 
-  // 5. memberResults 已由 delegate 工具自动收集，直接使用
   return {
     output: result.output,
     memberResults,
-    usage: aggregateUsage(result, memberResults),
+    usage: result.usage,
     duration: result.duration,
   }
 }
 ```
 
-> **memberResults 数据链路**：`createDelegateTools()` 返回 `{ tools, memberResults }`。delegate 工具每次调用 `member.run()` 时自动将完整 RunResult push 到 `memberResults` 中。`teamRun` 持有同一个引用，执行结束后直接用。
+> **memberResults 数据链路**：delegate 工具每次调用 `member.run()` 时自动将完整 RunResult push 到 `memberResults` 中。
 
 ---
 
@@ -172,7 +187,7 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 | 场景 | 行为 |
 |---|---|
 | 成员执行失败 | 错误信息返回给 lead → lead 决定是否重试或跳过 |
-| Lead 达到 maxRounds | Grace Period → 强制汇总已有结果 |
+| Lead 达到 maxRounds | AI SDK 停止循环，返回已有结果 |
 | 成员超时 | 返回超时信息给 lead |
 | 所有成员都失败 | lead 汇总错误信息输出 |
 

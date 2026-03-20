@@ -9,7 +9,7 @@ Agent Loop 是 Dao 的核心执行循环。每个 Agent 的 `chat()` 和 `run()`
 - 透明简单：`while(true)` 循环，没有隐藏状态机
 - 灵感来源：Gemini CLI 的 Agent Loop
 - 支持流式输出
-- 内置 Grace Period 超时保护
+- 内置 maxTurns 上限保护
 
 ---
 
@@ -31,13 +31,13 @@ Agent Loop 是 Dao 的核心执行循环。每个 Agent 的 `chat()` 和 `run()`
 │     ├─ 文本响应 → 输出给用户                            │
 │     ├─ 工具调用 → 执行工具 → 回到步骤 1                  │
 │     ├─ 完成信号 → 退出循环                              │
-│     └─ 无响应 → Grace Period                          │
+│     └─ 无响应 → 继续循环                          │
 │                                                      │
 │  4. 检查终止条件                                       │
 │     ├─ LLM 表示任务完成                                │
 │     ├─ 达到 maxTurns                                  │
 │     ├─ 手动 abort                                    │
-│     └─ Grace Period 超时                              │
+│     └─ AI SDK stepCountIs 截断                        │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
@@ -110,39 +110,18 @@ function buildSystemPrompt(options: AgentOptions): string {
 
 ---
 
-## 5. Grace Period
+## 5. maxTurns 上限
 
-当 Agent 接近 maxTurns 限制时触发：
+当 Agent 达到 maxTurns 限制时，使用 AI SDK 的 `stepCountIs()` 直接停止循环：
 
 ```
 正常执行
   │
-  ├─ 到达 maxTurns - 3？
-  │   └─ 注入提醒：「你的执行轮次即将用完，请尽快总结并完成任务。」
-  │
-  ├─ 到达 maxTurns - 1？
-  │   └─ 注入最终提醒：「这是你最后一次机会，请立即输出最终结果。」
-  │
   └─ 到达 maxTurns？
-      └─ 强制结束，收集已有结果
+      └─ AI SDK 停止模型调用，返回当前已有结果
 ```
 
-**实现**：
-```typescript
-const GRACE_THRESHOLD = 3  // 提前 3 轮开始提醒
-
-function getGracePrompt(currentTurn: number, maxTurns: number): string | null {
-  const remaining = maxTurns - currentTurn
-
-  if (remaining === GRACE_THRESHOLD) {
-    return "⚠️ 注意：你的执行轮次即将用完（剩余 3 轮），请尽快完成当前任务。"
-  }
-  if (remaining === 1) {
-    return "🚨 这是你最后一次机会。请立即输出最终结果，不要再调用工具。"
-  }
-  return null
-}
-```
+当前实现没有 Grace Period（提前提醒机制）。`maxTurns` 是硬性上限，到达后直接结束。
 
 ---
 

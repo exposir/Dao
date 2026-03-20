@@ -199,6 +199,7 @@ export function agent(options: AgentOptions): AgentInstance {
     async *chatStream(message: string): AsyncIterable<string> {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message })
+      const startTime = Date.now()
 
       try {
         let fullText = ""
@@ -217,7 +218,7 @@ export function agent(options: AgentOptions): AgentInstance {
           )
         }
 
-        await pm.emit("onComplete", instance, { result: { output: fullText, duration: 0, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+        await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
       } catch (err: any) {
         await pm.emit("onError", instance, { error: err })
         throw err
@@ -226,10 +227,12 @@ export function agent(options: AgentOptions): AgentInstance {
 
     async *runStream(task: string): AsyncIterable<RunEvent> {
       await ensureInit()
+      const startTime = Date.now()
 
       try {
         // 如果有 steps，走 steps 引擎
         if (options.steps?.length) {
+          stepUsages.length = 0
           const events: RunEvent[] = []
 
           const stepResults = await runSteps(
@@ -255,16 +258,29 @@ export function agent(options: AgentOptions): AgentInstance {
           }
 
           const lastResult = stepResults[stepResults.length - 1]
-          yield { type: "text", data: lastResult?.result ?? "" }
+          // 确保 text 事件 data 是 string
+          const outputText = typeof lastResult?.result === "string"
+            ? lastResult.result
+            : JSON.stringify(lastResult?.result ?? "")
+          yield { type: "text", data: outputText }
           yield { type: "done", data: null }
 
-          await pm.emit("onComplete", instance, { result: { output: lastResult?.result ?? "", duration: 0, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+          const totalUsage = {
+            promptTokens: stepUsages.reduce((s, u) => s + u.promptTokens, 0),
+            completionTokens: stepUsages.reduce((s, u) => s + u.completionTokens, 0),
+            totalTokens: stepUsages.reduce((s, u) => s + u.totalTokens, 0),
+          }
+          await pm.emit("onComplete", instance, { result: { output: outputText, duration: Date.now() - startTime, turns: stepResults.map((s, i) => ({ turn: `step-${i + 1}`, result: s.result })), usage: totalUsage } })
           return
         }
 
         // 无 steps，直接走 runLoopStream
-        yield* runLoopStream(options, task, [], instance, pm)
-        await pm.emit("onComplete", instance, { result: { output: "", duration: 0, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
+        let fullText = ""
+        for await (const event of runLoopStream(options, task, [], instance, pm)) {
+          if (event.type === "text") fullText += event.data
+          yield event
+        }
+        await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } } })
       } catch (err: any) {
         await pm.emit("onError", instance, { error: err })
         throw err

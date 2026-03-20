@@ -50,9 +50,11 @@ export class PluginManager {
 
   constructor(plugins: PluginInstance[] = []) {
     this.plugins = plugins
-    // 为每个插件创建独立的 store
+    // 为每个插件创建独立的 store（按 name 索引，同名插件共享 store）
     for (const p of plugins) {
-      this.stores.set(p.name, {})
+      if (!this.stores.has(p.name)) {
+        this.stores.set(p.name, {})
+      }
     }
   }
 

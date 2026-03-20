@@ -84,9 +84,14 @@ export async function runSteps(
  * 执行单个步骤
  */
 async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTaskFn, onWait?: () => Promise<any>): Promise<any> {
-  // 字符串步骤
+  // 字符串步骤：拼接上一步结果
   if (typeof step === "string") {
-    const result = await executeTask(step)
+    let prompt = step
+    if (ctx.lastResult != null && ctx.lastResult !== "") {
+      const lastStr = typeof ctx.lastResult === "string" ? ctx.lastResult : JSON.stringify(ctx.lastResult)
+      prompt = `上一步的执行结果：\n${lastStr}\n\n当前步骤：${step}`
+    }
+    const result = await executeTask(prompt)
     return result.output
   }
 
@@ -128,21 +133,29 @@ async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask
   const concurrency = step.concurrency ?? Infinity
   const tasks = step.parallel
 
+  /** 将 allSettled 结果提取为值或错误对象 */
+  function extractResults(settled: PromiseSettledResult<any>[]): any[] {
+    return settled.map(r =>
+      r.status === "fulfilled" ? r.value : { error: r.reason?.message ?? String(r.reason) }
+    )
+  }
+
   if (concurrency >= tasks.length) {
     // 无限制，全部并行
-    return await Promise.all(
+    const settled = await Promise.allSettled(
       tasks.map(subStep => executeStep(subStep as Step, ctx, executeTask))
     )
+    return extractResults(settled)
   }
 
   // 分批执行，同时最多 concurrency 个
   const results: any[] = []
   for (let i = 0; i < tasks.length; i += concurrency) {
     const batch = tasks.slice(i, i + concurrency)
-    const batchResults = await Promise.all(
+    const settled = await Promise.allSettled(
       batch.map(subStep => executeStep(subStep as Step, ctx, executeTask))
     )
-    results.push(...batchResults)
+    results.push(...extractResults(settled))
   }
   return results
 }
@@ -208,7 +221,7 @@ function isConditionalStep(step: any): step is ConditionalStep {
  * 执行 TaskStep（带 output 预期 + validate 校验 + maxRetries 重试）
  */
 async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn): Promise<string> {
-  // 拼装 prompt：task + output 预期
+  // 拼装 prompt：task + output 预期 + lastResult
   let prompt = step.task
   if (step.output) {
     prompt += `\n\n期望输出：${step.output}`
