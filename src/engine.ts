@@ -11,6 +11,7 @@
 import type {
   Step,
   TaskStep,
+  WaitStep,
   ParallelStep,
   ConditionalStep,
   StepContext,
@@ -38,6 +39,7 @@ export async function runSteps(
   executeTask: ExecuteTaskFn,
   onStepStart?: (step: Step, index: number) => void,
   onStepEnd?: (step: Step, index: number, result: any) => void,
+  onWait?: () => Promise<any>,
 ): Promise<StepResult[]> {
   const history: StepResult[] = []
   let lastResult: any = null
@@ -59,7 +61,7 @@ export async function runSteps(
     ctx.lastResult = lastResult
     ctx.history = history.map(h => ({ step: h.step, result: h.result }))
 
-    const result = await executeStep(step, ctx, executeTask)
+    const result = await executeStep(step, ctx, executeTask, onWait)
     lastResult = result
 
     history.push({ step, result })
@@ -72,19 +74,27 @@ export async function runSteps(
 /**
  * 执行单个步骤
  */
-async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
-  // 字符串步骤 → 通过 executeTask 回调执行
+async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTaskFn, onWait?: () => Promise<any>): Promise<any> {
+  // 字符串步骤
   if (typeof step === "string") {
     const result = await executeTask(step)
     return result.output
   }
 
-  // 函数步骤 → 直接执行
+  // 函数步骤
   if (typeof step === "function") {
     return await step(ctx)
   }
 
-  // TaskStep（带 output/validate）
+  // WaitStep
+  if (isWaitStep(step)) {
+    if (!onWait) {
+      throw new Error("wait 步骤需要 resume() 支持，请通过 agent 实例调用")
+    }
+    return await onWait()
+  }
+
+  // TaskStep
   if (isTaskStep(step)) {
     return await executeTaskStep(step, executeTask)
   }
@@ -169,6 +179,10 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
 }
 
 /** 类型守卫 */
+function isWaitStep(step: any): step is WaitStep {
+  return step && typeof step === "object" && step.wait === true
+}
+
 function isTaskStep(step: any): step is TaskStep {
   return step && typeof step === "object" && typeof step.task === "string" && !("parallel" in step) && !("if" in step)
 }

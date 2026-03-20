@@ -48,19 +48,29 @@
 - [x] 步骤输出预期（`expected_output`，拼入 prompt 引导 LLM 输出格式）
 - [x] 步骤输出校验（`guardrail`，代码级 validate + 校验失败自动重试）
 
-## V2.0 📋 企业级
+## V2.0 ✅ 能力补全
 
-> 可观测 + 容错 + 生态，按组递进，每组可独立发版
+> confirm + 完整流式事件 + fallback + 委派，无新依赖
+
+- [x] `confirm` 机制（工具执行前 `onConfirm` 回调确认）
+- [x] 完整流式事件（step_start / step_end / tool_call / delegate）
+- [x] Fallback Model（主模型失败自动切换备用模型）
+- [x] Agent 级委派（`delegates` 参数，无需 team 即可跨 agent 协作）
+
+## V2.1 📋 可观测
+
+> 日志 + 链路追踪 + 可测试性
 
 - [ ] 结构化日志 + 链路追踪（`RunResult.requestId`）
-- [ ] OpenTelemetry 集成
-- [ ] Fallback Model（主模型失败自动切换）
-- [ ] 成本上限（`maxCostPerRun`）
-- [ ] 上下文窗口管理（token 计数 + 自动截断/摘要）
-- [ ] `confirm` 机制（`onConfirm` 回调）
-- [ ] 完整流式事件（step_start / step_end / tool_call / delegate）
+- [ ] OpenTelemetry 集成（可选依赖 `@opentelemetry/api`）
 - [ ] 可测试性（mock 模型注入 + 响应录制/回放）
+
+## V2.2 📋 生态
+
+> 上下文管理 + 成本控制 + MCP
+
+- [ ] 上下文窗口管理（token 计数 + 自动截断/摘要）
+- [ ] 成本上限（`maxCostPerRun`）
 - [ ] MCP 协议支持
-- [ ] Agent 级委派（`allow_delegation`，无需 team 即可跨 agent 协作）
 
 > **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。

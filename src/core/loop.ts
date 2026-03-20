@@ -27,7 +27,13 @@ import { ModelError, ToolError, TimeoutError } from "./errors.js"
 import type { PluginManager } from "../plugin.js"
 
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
-function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: PluginManager): ToolSet {
+function toAITools(
+  tools: ToolInstance[],
+  agentInstance: AgentInstance,
+  pm?: PluginManager,
+  options?: AgentOptions,
+  onToolCall?: (name: string, params: any, result: any) => void,
+): ToolSet {
   const result: ToolSet = {}
   for (const t of tools) {
     result[t.name] = {
@@ -45,22 +51,32 @@ function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: Plu
           if (skipped) return "[工具调用被插件跳过]"
         }
 
+        // confirm 机制
+        if (t.confirm && options?.onConfirm) {
+          const confirmed = await options.onConfirm(t.name, params)
+          if (!confirmed) {
+            const msg = `工具 "${t.name}" 被用户拒绝执行`
+            onToolCall?.(t.name, params, msg)
+            return msg
+          }
+        }
+
         try {
           const ctx: ToolContext = {
             agent: agentInstance,
             abort: () => { throw new Error("工具中止执行") },
           }
           const output = await t.execute(params, ctx)
-          const result = typeof output === "string" ? output : JSON.stringify(output)
+          const toolResult = typeof output === "string" ? output : JSON.stringify(output)
 
           // 触发 afterToolCall hook
           if (pm) {
-            await pm.emit("afterToolCall", agentInstance, { tool: t.name, result })
+            await pm.emit("afterToolCall", agentInstance, { tool: t.name, result: toolResult })
           }
 
-          return result
+          onToolCall?.(t.name, params, toolResult)
+          return toolResult
         } catch (err: any) {
-          // 包装为 ToolError（但不阻断 Agent Loop，返回错误信息让 LLM 处理）
           const toolErr = err instanceof ToolError
             ? err
             : new ToolError(`工具 "${t.name}" 执行失败：${err.message}`, t.name, err)
@@ -69,6 +85,7 @@ function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: Plu
             await pm.emit("afterToolCall", agentInstance, { tool: t.name, result: toolErr.message })
           }
 
+          onToolCall?.(t.name, params, toolErr.message)
           return toolErr.message
         }
       },
@@ -135,7 +152,7 @@ export async function runLoop(
 
   const model = options.modelProvider ?? await resolveModel(modelString)
   const systemPrompt = buildSystemPrompt(options)
-  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm) : undefined
+  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options) : undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,
@@ -215,6 +232,51 @@ export async function runLoop(
     }
 
     // 包装为 ModelError
+    if (options.fallbackModel) {
+      // Fallback：用备用模型重试一次
+      try {
+        const fallbackModel = await resolveModel(options.fallbackModel)
+        const fallbackResult = await generateText({
+          model: fallbackModel,
+          system: systemPrompt || undefined,
+          messages,
+          tools,
+          temperature: options.temperature,
+          maxOutputTokens: options.maxTokens,
+          maxRetries: options.retry?.maxRetries ?? 2,
+          stopWhen: stepCountIs(maxTurns),
+          providerOptions: {
+            openai: { strictJsonSchema: false },
+          },
+        })
+
+        if (timeoutId) clearTimeout(timeoutId)
+        if (pm) {
+          await pm.emit("afterModelCall", agentInstance, { response: fallbackResult.text })
+        }
+
+        const usage: TokenUsage = {
+          promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
+          completionTokens: fallbackResult.totalUsage?.outputTokens ?? 0,
+          totalTokens: (fallbackResult.totalUsage?.inputTokens ?? 0) + (fallbackResult.totalUsage?.outputTokens ?? 0),
+        }
+
+        const turnResults = fallbackResult.steps?.map((step, i) => ({
+          turn: `fallback-turn-${i + 1}`,
+          result: step.text || null,
+        })) ?? []
+
+        return {
+          output: fallbackResult.text,
+          turns: turnResults,
+          usage,
+          duration: Date.now() - startTime,
+        }
+      } catch {
+        // fallback 也失败，抛原始错误
+      }
+    }
+
     throw new ModelError(
       `模型调用失败：${err.message}`,
       err,
@@ -241,7 +303,13 @@ export async function* runLoopStream(
 
   const model = options.modelProvider ?? await resolveModel(modelString)
   const systemPrompt = buildSystemPrompt(options)
-  const tools = options.tools?.length ? toAITools(options.tools, agentInstance) : undefined
+
+  // tool_call 事件收集器
+  const toolCallEvents: RunEvent[] = []
+  const onToolCall = (name: string, params: any, result: any) => {
+    toolCallEvents.push({ type: "tool_call", data: { tool: name, params, result } })
+  }
+  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, undefined, options, onToolCall) : undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,
@@ -270,7 +338,16 @@ export async function* runLoopStream(
     })
 
     for await (const part of result.textStream) {
+      // 先发累积的 tool_call 事件
+      while (toolCallEvents.length > 0) {
+        yield toolCallEvents.shift()!
+      }
       yield { type: "text", data: part }
+    }
+
+    // 发剩余的 tool_call 事件
+    while (toolCallEvents.length > 0) {
+      yield toolCallEvents.shift()!
     }
 
     if (timeoutId) clearTimeout(timeoutId)

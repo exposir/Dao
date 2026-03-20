@@ -5,10 +5,11 @@
  */
 
 import type { ModelMessage } from "ai"
-import type { AgentOptions, AgentInstance, RunResult, RunEvent } from "./core/types.js"
+import type { AgentOptions, AgentInstance, RunResult, RunEvent, ToolInstance } from "./core/types.js"
 import { runLoop, runLoopStream } from "./core/loop.js"
 import { runSteps } from "./engine.js"
 import { PluginManager } from "./plugin.js"
+import { tool } from "./tool.js"
 
 /**
  * 创建一个 Agent 实例
@@ -31,6 +32,45 @@ import { PluginManager } from "./plugin.js"
  * ```
  */
 export function agent(options: AgentOptions): AgentInstance {
+  // delegates：自动注入 delegate 工具
+  if (options.delegates && Object.keys(options.delegates).length > 0) {
+    const delegates = options.delegates
+    const memberDescriptions = Object.entries(delegates)
+      .map(([name, member]) => {
+        const config = member.getConfig()
+        return `- **${name}**: ${config.role ?? "通用 Agent"}`
+      })
+      .join("\n")
+
+    const delegateTool = tool({
+      name: "delegate",
+      description:
+        `将任务委派给其他 Agent 执行。可用 Agent：\n${memberDescriptions}\n` +
+        `使用 member 参数指定名称，task 参数描述任务。`,
+      params: {
+        member: "Agent 名称",
+        task: "要委派的任务描述",
+      },
+      run: async ({ member: memberName, task }) => {
+        const memberAgent = delegates[memberName]
+        if (!memberAgent) {
+          return `错误：Agent "${memberName}" 不存在。可用：${Object.keys(delegates).join(", ")}`
+        }
+        try {
+          const result = await memberAgent.run(task)
+          return result.output
+        } catch (err: any) {
+          return `Agent "${memberName}" 执行失败：${err.message}`
+        }
+      },
+    })
+
+    options = {
+      ...options,
+      tools: [...(options.tools ?? []), delegateTool],
+    }
+  }
+
   // 对话历史（memory 用）
   let messageHistory: ModelMessage[] = []
 
@@ -166,19 +206,29 @@ export function agent(options: AgentOptions): AgentInstance {
 
       // 如果有 steps，走 steps 引擎
       if (options.steps?.length) {
+        const events: RunEvent[] = []
+
         const stepResults = await runSteps(
           options.steps,
           instance,
           executeTask,
-          // onStepStart → 发 step_start 事件
+          // onStepStart
           (step, index) => {
-            // 注意：这里不能 yield（非 generator 回调），事件通过 afterStep hook 触发
+            const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
+            events.push({ type: "step_start", data: { step: stepName, index } })
           },
-          // onStepEnd → 触发 afterStep hook
-          async (step, _index, result) => {
+          // onStepEnd
+          async (step, index, result) => {
+            const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
+            events.push({ type: "step_end", data: { step: stepName, index, result } })
             await pm.emit("afterStep", instance, { step, result })
           },
         )
+
+        // 发所有事件
+        for (const event of events) {
+          yield event
+        }
 
         const lastResult = stepResults[stepResults.length - 1]
         yield { type: "text", data: lastResult?.result ?? "" }

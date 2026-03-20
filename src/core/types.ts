@@ -74,6 +74,7 @@ export interface JSONSchema {
 export type Step =
   | string
   | TaskStep
+  | WaitStep
   | ParallelStep
   | ConditionalStep
   | ((ctx: StepContext) => any)
@@ -88,6 +89,13 @@ export interface TaskStep {
   validate?: (result: string) => boolean | string
   /** 校验失败时的最大重试次数，默认 0（不重试） */
   maxRetries?: number
+}
+
+/** 等待步骤：暂停执行，等待 resume() 调用 */
+export interface WaitStep {
+  wait: true
+  /** 等待描述（可选，仅供日志用） */
+  reason?: string
 }
 
 export interface ParallelStep {
@@ -188,9 +196,9 @@ export interface AgentOptions {
 
   /** 是否开启流式输出 */
   stream?: boolean
-  /** 工具确认回调 @planned V2.0 */
+  /** 工具确认回调，工具 confirm: true 时调用 */
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
-  /** 备用模型 @planned V2.0 */
+  /** 备用模型，主模型失败后自动切换 */
   fallbackModel?: string
   /** 上下文窗口配置 @planned V2.0 */
   contextWindow?: {
@@ -199,6 +207,8 @@ export interface AgentOptions {
   }
   /** 自定义模型提供者（测试注入 mock） */
   modelProvider?: LanguageModel
+  /** 可委派的 Agent 列表，自动注入 delegate 工具 */
+  delegates?: Record<string, AgentInstance>
 }
 
 /** agent() 返回的实例 */
@@ -211,6 +221,8 @@ export interface AgentInstance {
   chatStream(message: string): AsyncIterable<string>
   /** 流式任务执行 */
   runStream(task: string): AsyncIterable<RunEvent>
+  /** 恢复被 wait 步骤暂停的执行，可传入数据供后续步骤使用 */
+  resume(data?: any): void
   /** 清除记忆 */
   clearMemory(): void
   /** 获取当前配置 */
@@ -237,13 +249,14 @@ export interface TokenUsage {
 }
 
 /**
- * 流式事件。当前仅支持 text 和 done。
- * @future 计划支持 step_start / step_end / error / tool_call 等细粒度事件
+ * 流式事件
  */
-export interface RunEvent {
-  type: "text" | "done"
-  data: any
-}
+export type RunEvent =
+  | { type: "text"; data: string }
+  | { type: "done"; data: null }
+  | { type: "step_start"; data: { step: string; index: number } }
+  | { type: "step_end"; data: { step: string; index: number; result: any } }
+  | { type: "tool_call"; data: { tool: string; params: any; result: any } }
 
 // ============================================================
 // 4. Team 类型

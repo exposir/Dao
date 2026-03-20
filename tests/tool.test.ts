@@ -89,15 +89,14 @@ describe("tool", () => {
     expect(result).toBe("done")
   })
 
-  it("confirm: true 应该抛错（V0.5 计划）", () => {
-    expect(() =>
-      tool({
-        name: "delete",
-        description: "删除",
-        params: { path: "路径" },
-        run: () => "deleted",
-        confirm: true,
-      })
-    ).toThrow("confirm: true")
+  it("confirm: true 应该正确标记", () => {
+    const deleteTool = tool({
+      name: "delete",
+      description: "删除",
+      params: { path: "路径" },
+      run: () => "deleted",
+      confirm: true,
+    })
+    expect(deleteTool.confirm).toBe(true)
   })
 })

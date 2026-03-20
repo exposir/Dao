@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.0 (2026-03-20)
+
+### Features
+
+- **confirm**: 工具确认机制 — `tool({ confirm: true })` + `agent({ onConfirm: async (name, params) => ... })`
+- **streaming events**: 完整流式事件 — `step_start` / `step_end` / `tool_call`，通过 `runStream()` 获取
+- **fallback**: 备用模型 — `agent({ fallbackModel: "openai/gpt-4o" })`，主模型失败自动切换
+- **delegates**: Agent 级委派 — `agent({ delegates: { researcher, writer } })`，无需 team 即可跨 agent 协作
+
+### Breaking Changes
+
+- `RunEvent` 从 `interface` 改为 `type`（联合类型），新增 `step_start` / `step_end` / `tool_call` 事件类型
+
 ## 1.2.0 (2026-03-20)
 
 ### Features

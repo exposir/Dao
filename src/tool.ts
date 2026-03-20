@@ -29,14 +29,6 @@ import type {
 export function tool(options: ToolOptions): ToolInstance {
   const { name, description, params, run, confirm = false } = options
 
-  // confirm 机制尚未实现，提前报错避免安全假象
-  if (confirm) {
-    throw new Error(
-      `工具 "${name}" 设置了 confirm: true，但确认功能尚未实现。` +
-      `请移除 confirm 或自行在 run() 中实现确认逻辑。`
-    )
-  }
-
   return {
     __type: "tool",
     name,
