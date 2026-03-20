@@ -79,14 +79,27 @@ function toAITools(tools: ToolInstance[], agentInstance: AgentInstance, pm?: Plu
 
 /** 组装 system prompt */
 function buildSystemPrompt(options: AgentOptions): string {
-  const parts: string[] = []
-
+  // 专家模式：systemPrompt 存在时直接用，忽略 role/goal/background
   if (options.systemPrompt) {
-    parts.push(options.systemPrompt)
+    // 仍然拼接 rules
+    const rulesPrompt = compileRules(options.rules)
+    return rulesPrompt
+      ? `${options.systemPrompt}\n\n${rulesPrompt}`
+      : options.systemPrompt
   }
+
+  const parts: string[] = []
 
   if (options.role) {
     parts.push(`你的角色是：${options.role}`)
+  }
+
+  if (options.goal) {
+    parts.push(`你的目标是：${options.goal}`)
+  }
+
+  if (options.background) {
+    parts.push(`背景：${options.background}`)
   }
 
   // 使用 rules 系统编译规则

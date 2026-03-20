@@ -40,13 +40,13 @@
 - [x] `maxTokens` 上限
 - [x] `parallel` 并发限制（`concurrency` 参数）
 
-## V1.2 📋 更好用
+## V1.2 ✅ 更好用
 
 > prompt 增强 + 输出校验
 
-- [ ] `goal` + `background` 字段（简单模式 prompt 拼接，`systemPrompt` 为专家覆盖）
-- [ ] 步骤输出预期（`expected_output`，拼入 prompt 引导 LLM 输出格式）
-- [ ] 步骤输出校验（`guardrail`，代码级 validate + 校验失败自动重试）
+- [x] `goal` + `background` 字段（简单模式 prompt 拼接，`systemPrompt` 为专家覆盖）
+- [x] 步骤输出预期（`expected_output`，拼入 prompt 引导 LLM 输出格式）
+- [x] 步骤输出校验（`guardrail`，代码级 validate + 校验失败自动重试）
 
 ## V2.0 📋 企业级
 

@@ -32,6 +32,7 @@ export type {
   JSONSchema,
   // Step
   Step,
+  TaskStep,
   StepContext,
   ParallelStep,
   ConditionalStep,

@@ -73,9 +73,22 @@ export interface JSONSchema {
 /** 步骤可以是以下任意类型 */
 export type Step =
   | string
+  | TaskStep
   | ParallelStep
   | ConditionalStep
   | ((ctx: StepContext) => any)
+
+/** 任务步骤（带输出预期和校验） */
+export interface TaskStep {
+  /** 任务描述 */
+  task: string
+  /** 输出预期，拼入 prompt 引导 LLM 输出格式 */
+  output?: string
+  /** 输出校验函数，返回 true 通过，返回字符串为失败原因 */
+  validate?: (result: string) => boolean | string
+  /** 校验失败时的最大重试次数，默认 0（不重试） */
+  maxRetries?: number
+}
 
 export interface ParallelStep {
   parallel: (string | Step | (() => Promise<any>))[]
@@ -112,6 +125,10 @@ export interface StepContext {
 export interface AgentOptions {
   /** 角色描述，会被注入到 system prompt 中 */
   role?: string
+  /** 目标：告诉 LLM 它要完成什么 */
+  goal?: string
+  /** 背景：告诉 LLM 它为什么能完成 */
+  background?: string
   /** 模型，格式为 "provider/model" */
   model?: string
   /** 可用工具列表 */

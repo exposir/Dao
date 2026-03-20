@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 (2026-03-20)
+
+### Features
+
+- **goal**: `agent({ goal: "找出 bug" })` — 告诉 LLM 它要完成什么，拼入 system prompt
+- **background**: `agent({ background: "10 年经验" })` — 告诉 LLM 它为什么能完成
+- **systemPrompt 专家模式**: 提供 `systemPrompt` 时忽略 role/goal/background 自动拼接
+- **expected_output**: `{ task: "分析市场", output: "500 字报告" }` — 步骤输出预期，拼入 prompt 引导格式
+- **guardrail**: `{ task: "生成 JSON", validate: (r) => ..., maxRetries: 3 }` — 代码级输出校验，失败自动重试
+
 ## 1.1.0 (2026-03-20)
 
 ### Features

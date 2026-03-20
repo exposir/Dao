@@ -10,6 +10,7 @@
 
 import type {
   Step,
+  TaskStep,
   ParallelStep,
   ConditionalStep,
   StepContext,
@@ -72,7 +73,7 @@ export async function runSteps(
  * 执行单个步骤
  */
 async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
-  // 字符串步骤 → 通过 executeTask 回调执行（直接走 runLoop，跳过 steps 避免递归）
+  // 字符串步骤 → 通过 executeTask 回调执行
   if (typeof step === "string") {
     const result = await executeTask(step)
     return result.output
@@ -81,6 +82,11 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
   // 函数步骤 → 直接执行
   if (typeof step === "function") {
     return await step(ctx)
+  }
+
+  // TaskStep（带 output/validate）
+  if (isTaskStep(step)) {
+    return await executeTaskStep(step, executeTask)
   }
 
   // 并行步骤
@@ -163,12 +169,60 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
 }
 
 /** 类型守卫 */
+function isTaskStep(step: any): step is TaskStep {
+  return step && typeof step === "object" && typeof step.task === "string" && !("parallel" in step) && !("if" in step)
+}
+
 function isParallelStep(step: any): step is ParallelStep {
   return step && typeof step === "object" && Array.isArray(step.parallel)
 }
 
 function isConditionalStep(step: any): step is ConditionalStep {
   return step && typeof step === "object" && "if" in step && "then" in step
+}
+
+/**
+ * 执行 TaskStep（带 output 预期 + validate 校验 + maxRetries 重试）
+ */
+async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn): Promise<string> {
+  // 拼装 prompt：task + output 预期
+  let prompt = step.task
+  if (step.output) {
+    prompt += `\n\n期望输出：${step.output}`
+  }
+
+  const maxAttempts = (step.maxRetries ?? 0) + 1
+  let lastFeedback = ""
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const result = await executeTask(
+      attempt === 0
+        ? prompt
+        : `${prompt}\n\n上次输出未通过校验，原因：${lastFeedback}\n请重新生成。`
+    )
+
+    // 无校验函数，直接返回
+    if (!step.validate) {
+      return result.output
+    }
+
+    // 校验
+    const validation = step.validate(result.output)
+    if (validation === true) {
+      return result.output
+    }
+
+    // 校验失败
+    lastFeedback = typeof validation === "string" ? validation : "输出格式不符合要求"
+
+    // 最后一次尝试仍失败，返回结果（不抛错）
+    if (attempt === maxAttempts - 1) {
+      return result.output
+    }
+  }
+
+  // 不会到这里，但 TypeScript 需要
+  return ""
 }
 
 /** 中止错误 */
