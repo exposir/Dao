@@ -229,7 +229,7 @@ interface RunResult {
 /** 流式事件 */
 type RunEvent =
   | { type: "text"; data: string }
-  | { type: "done"; data: null }
+  | { type: "done"; data: { usage?: TokenUsage } | null }
   | { type: "step_start"; data: { step: string; index: number } }
   | { type: "step_end"; data: { step: string; index: number; result: any } }
   | { type: "tool_call"; data: { tool: string; params: any; result: any } }

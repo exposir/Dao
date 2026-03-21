@@ -29,15 +29,17 @@ steps: ["了解项目结构", "逐文件审查", "生成报告"]
 
 **Prompt 注入方式**：
 ```
-你正在执行一个多步骤任务。
-当前是第 {n}/{total} 步：{step_text}
+上一步的执行结果：
+{lastResult}
 
-请专注完成当前步骤。
+当前步骤：{step_text}
 ```
 
-**完成判断**：每个步骤有独立的 `maxTurns`（默认 10）。引擎通过两种方式判断步骤完成：
+> 第一步没有 lastResult，直接发送步骤文本。TaskStep 同样会注入 lastResult。
+
+**完成判断**：每个步骤复用 agent 自身的 `maxTurns`（由 `AgentOptions` 配置），没有独立的步骤级 maxTurns。引擎通过两种方式判断步骤完成：
 1. LLM 返回纯文本且没有工具调用 → 认为完成
-2. 达到步骤的 `maxTurns` → 强制结束，收集已有结果
+2. 达到 agent 的 `maxTurns` → AI SDK 停止循环
 
 > 不依赖 LLM 输出特殊标记。开源模型的指令遵循能力参差不齐，用 `maxTurns` 兜底更稳定。
 
