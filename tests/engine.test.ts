@@ -126,3 +126,152 @@ describe("AbortError", () => {
   })
 })
 
+describe("parallel 步骤部分失败 (Promise.allSettled)", () => {
+  it("一个子步骤失败不应影响其他子步骤", async () => {
+    const agent = mockAgent()
+    let callCount = 0
+    const failingExecuteTask = async (task: string): Promise<RunResult> => {
+      callCount++
+      if (task.includes("失败")) {
+        throw new Error("子步骤执行失败")
+      }
+      return {
+        output: `完成: ${task}`,
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    const results = await runSteps([
+      { parallel: ["成功任务", "失败任务", "另一个成功"] },
+    ], agent, failingExecuteTask)
+
+    expect(results).toHaveLength(1)
+    const parallelResults = results[0].result as any[]
+    expect(parallelResults).toHaveLength(3)
+    // 成功的子步骤
+    expect(parallelResults[0]).toBe("完成: 成功任务")
+    expect(parallelResults[2]).toBe("完成: 另一个成功")
+    // 失败的子步骤记录了错误
+    expect(parallelResults[1]).toHaveProperty("error")
+    expect(parallelResults[1].error).toContain("子步骤执行失败")
+  })
+})
+
+describe("lastResult 注入", () => {
+  it("字符串步骤应该将上一步结果注入到 prompt 中", async () => {
+    const agent = mockAgent()
+    const capturedPrompts: string[] = []
+    const capturingExecuteTask = async (task: string): Promise<RunResult> => {
+      capturedPrompts.push(task)
+      return {
+        output: `完成: ${task.slice(0, 20)}`,
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    await runSteps(["第一步", "第二步"], agent, capturingExecuteTask)
+
+    // 第一步没有 lastResult，prompt 就是原始步骤文本
+    expect(capturedPrompts[0]).toBe("第一步")
+    // 第二步应该包含上一步的结果
+    expect(capturedPrompts[1]).toContain("上一步的执行结果")
+    expect(capturedPrompts[1]).toContain("当前步骤：第二步")
+  })
+
+  it("TaskStep 也应该注入 lastResult", async () => {
+    const agent = mockAgent()
+    const capturedPrompts: string[] = []
+    const capturingExecuteTask = async (task: string): Promise<RunResult> => {
+      capturedPrompts.push(task)
+      return {
+        output: `完成: ${task.slice(0, 20)}`,
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    await runSteps([
+      "第一步",
+      { task: "分析结果", output: "JSON 格式" },
+    ], agent, capturingExecuteTask)
+
+    // TaskStep 的 prompt 应该包含上一步结果
+    expect(capturedPrompts[1]).toContain("上一步的执行结果")
+    expect(capturedPrompts[1]).toContain("当前步骤：分析结果")
+    expect(capturedPrompts[1]).toContain("期望输出：JSON 格式")
+  })
+})
+
+describe("单步失败继续执行", () => {
+  it("非 AbortError 的步骤失败应该记录错误并继续", async () => {
+    const agent = mockAgent()
+    let callCount = 0
+    const failOnSecondTask = async (task: string): Promise<RunResult> => {
+      callCount++
+      if (callCount === 2) {
+        throw new Error("第二步爆了")
+      }
+      return {
+        output: `完成: ${task.slice(0, 10)}`,
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    const results = await runSteps(["步骤一", "步骤二", "步骤三"], agent, failOnSecondTask)
+
+    expect(results).toHaveLength(3)
+    // 第一步成功
+    expect(results[0].result).toContain("完成")
+    // 第二步失败但记录了错误
+    expect(results[1].result).toHaveProperty("error")
+    expect(results[1].result.error).toContain("第二步爆了")
+    // 第三步继续执行
+    expect(results[2].result).toContain("完成")
+  })
+
+  it("AbortError 应该中断整个流程", async () => {
+    const agent = mockAgent()
+
+    await expect(
+      runSteps([
+        "步骤一",
+        (ctx: StepContext) => { ctx.abort("中止"); return "" },
+        "步骤三",  // 不应执行
+      ], agent, mockExecuteTask)
+    ).rejects.toThrow(AbortError)
+  })
+})
+
+describe("TaskStep validate 重试", () => {
+  it("校验失败应该重试直到通过", async () => {
+    const agent = mockAgent()
+    let attempt = 0
+    const executeTask = async (task: string): Promise<RunResult> => {
+      attempt++
+      return {
+        output: attempt >= 2 ? "valid-json" : "bad-output",
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    const results = await runSteps([
+      {
+        task: "生成 JSON",
+        validate: (r: string) => r === "valid-json" ? true : "格式不对",
+        maxRetries: 2,
+      },
+    ], agent, executeTask)
+
+    expect(results[0].result).toBe("valid-json")
+    expect(attempt).toBe(2)
+  })
+})

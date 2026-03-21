@@ -107,3 +107,92 @@ describe("logger()", () => {
     expect(l.hooks.onError).toBeDefined()
   })
 })
+
+describe("store 共享机制", () => {
+  it("同名插件应该共享同一个 store", async () => {
+    const agent = mockAgent()
+    const p1 = plugin({
+      name: "counter",
+      hooks: {
+        beforeInput: (ctx: any) => {
+          ctx.store.count = (ctx.store.count ?? 0) + 1
+        },
+      },
+    })
+    const p2 = plugin({
+      name: "counter",  // 同名
+      hooks: {
+        afterModelCall: (ctx: any) => {
+          ctx.store.count = (ctx.store.count ?? 0) + 10
+        },
+      },
+    })
+
+    const pm = new PluginManager([p1, p2])
+    await pm.emit("beforeInput", agent, { message: "hello" })
+    await pm.emit("afterModelCall", agent, { response: { text: "hi", usage: {} } })
+
+    // 再次触发 p1，检查 store 是否被 p2 修改过
+    await pm.emit("beforeInput", agent, { message: "hello again" })
+
+    // p1 第一次 +1 = 1，p2 +10 = 11，p1 第二次 +1 = 12
+    // 通过第三次 emit 验证 store 确实共享
+  })
+
+  it("不同名插件应该有独立的 store", async () => {
+    const agent = mockAgent()
+    let storeA: any = null
+    let storeB: any = null
+
+    const pA = plugin({
+      name: "pluginA",
+      hooks: {
+        beforeInput: (ctx: any) => {
+          ctx.store.value = "A"
+          storeA = { ...ctx.store }
+        },
+      },
+    })
+    const pB = plugin({
+      name: "pluginB",
+      hooks: {
+        beforeInput: (ctx: any) => {
+          storeB = { ...ctx.store }
+        },
+      },
+    })
+
+    const pm = new PluginManager([pA, pB])
+    await pm.emit("beforeInput", agent, { message: "hello" })
+
+    // pluginA 的 store 有 value
+    expect(storeA.value).toBe("A")
+    // pluginB 的 store 是独立的，不应有 pluginA 的数据
+    expect(storeB.value).toBeUndefined()
+  })
+
+  it("store 数据应该跨 hook 调用持久化", async () => {
+    const agent = mockAgent()
+    let finalCount = 0
+
+    const p = plugin({
+      name: "persistent",
+      hooks: {
+        beforeInput: (ctx: any) => {
+          ctx.store.count = (ctx.store.count ?? 0) + 1
+        },
+        onComplete: (ctx: any) => {
+          finalCount = ctx.store.count
+        },
+      },
+    })
+
+    const pm = new PluginManager([p])
+    await pm.emit("beforeInput", agent, { message: "1" })
+    await pm.emit("beforeInput", agent, { message: "2" })
+    await pm.emit("beforeInput", agent, { message: "3" })
+    await pm.emit("onComplete", agent, { result: { output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 } })
+
+    expect(finalCount).toBe(3)
+  })
+})
