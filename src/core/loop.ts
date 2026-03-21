@@ -9,7 +9,7 @@
  * 5. maxTurns 兜底（通过 stopWhen + stepCountIs 实现）
  */
 
-import { generateText, streamText, stepCountIs, jsonSchema } from "ai"
+import { generateText, generateObject, streamText, stepCountIs, jsonSchema } from "ai"
 import type { ModelMessage, ToolSet } from "ai"
 import type {
   AgentOptions,
@@ -19,6 +19,8 @@ import type {
   RunResult,
   RunEvent,
   TokenUsage,
+  GenerateOptions,
+  GenerateResult,
 } from "./types.js"
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
@@ -142,7 +144,7 @@ export async function runLoop(
   const maxTurns = options.maxTurns ?? globalConfig.defaultMaxTurns ?? 50
   const modelString = options.model ?? globalConfig.defaultModel ?? detectDefaultModel()
 
-  if (!modelString) {
+  if (!options.modelProvider && !modelString) {
     throw new Error(
       "未指定模型。请通过 agent({ model: \"provider/model\" }) 或 " +
       "configure({ defaultModel: \"provider/model\" }) 指定，" +
@@ -150,7 +152,7 @@ export async function runLoop(
     )
   }
 
-  const model = options.modelProvider ?? await resolveModel(modelString)
+  const model = options.modelProvider ?? await resolveModel(modelString!)
   const systemPrompt = buildSystemPrompt(options)
   const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options) : undefined
 
@@ -314,11 +316,11 @@ export async function* runLoopStream(
   const maxTurns = options.maxTurns ?? globalConfig.defaultMaxTurns ?? 50
   const modelString = options.model ?? globalConfig.defaultModel ?? detectDefaultModel()
 
-  if (!modelString) {
+  if (!options.modelProvider && !modelString) {
     throw new Error("未指定模型。")
   }
 
-  const model = options.modelProvider ?? await resolveModel(modelString)
+  const model = options.modelProvider ?? await resolveModel(modelString!)
   const systemPrompt = buildSystemPrompt(options)
 
   // tool_call 事件收集器
@@ -410,6 +412,99 @@ export async function* runLoopStream(
 
     throw new ModelError(
       `流式调用失败：${err.message}`,
+      err,
+    )
+  }
+}
+
+/**
+ * 结构化输出（基于 AI SDK generateObject）
+ */
+export async function runGenerate<T = any>(
+  options: AgentOptions,
+  task: string,
+  generateOptions: GenerateOptions<T>,
+  agentInstance: AgentInstance,
+  pm?: PluginManager,
+): Promise<GenerateResult<T>> {
+  const globalConfig = getGlobalConfig()
+  const modelString = options.model ?? globalConfig.defaultModel ?? detectDefaultModel()
+
+  if (!options.modelProvider && !modelString) {
+    throw new Error("未指定模型。")
+  }
+
+  const model = options.modelProvider ?? await resolveModel(modelString!)
+  const systemPrompt = buildSystemPrompt(options)
+
+  // 超时控制
+  let controller: AbortController | undefined
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  if (options.timeout) {
+    controller = new AbortController()
+    timeoutId = setTimeout(() => controller!.abort(), options.timeout)
+  }
+
+  // 触发 beforeModelCall hook
+  if (pm) {
+    const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
+    if (skipped) {
+      if (timeoutId) clearTimeout(timeoutId)
+      return { object: {} as T, usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
+    }
+  }
+
+  const startTime = Date.now()
+
+  try {
+    const generateOptionsAny: any = {
+      model,
+      system: systemPrompt || undefined,
+      prompt: task,
+      schema: generateOptions.schema,
+      schemaName: generateOptions.schemaName ?? "result",
+      schemaDescription: generateOptions.schemaDescription,
+      mode: "json", // DeepSeek 等模型可能不支持默认的 auto/json_schema，显式指定 json 模式
+      temperature: options.temperature,
+      maxOutputTokens: options.maxTokens,
+      maxRetries: options.retry?.maxRetries ?? 2,
+      abortSignal: controller?.signal,
+    };
+
+    const result = await generateObject(generateOptionsAny)
+
+    if (timeoutId) clearTimeout(timeoutId)
+
+    const usage: TokenUsage = {
+      promptTokens: result.usage?.inputTokens ?? 0,
+      completionTokens: result.usage?.outputTokens ?? 0,
+      totalTokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+    }
+
+    // 触发 afterModelCall hook
+    if (pm) {
+      await pm.emit("afterModelCall", agentInstance, {
+        response: { text: JSON.stringify(result.object), usage },
+      })
+    }
+
+    return {
+      object: result.object as T,
+      usage,
+      duration: Date.now() - startTime,
+    }
+  } catch (err: any) {
+    if (timeoutId) clearTimeout(timeoutId)
+
+    if (controller?.signal?.aborted || err?.name === "AbortError") {
+      throw new TimeoutError(
+        `结构化输出超时（${options.timeout}ms）`,
+        options.timeout!,
+      )
+    }
+
+    throw new ModelError(
+      `结构化输出失败：${err.message}`,
       err,
     )
   }

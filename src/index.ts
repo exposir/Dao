@@ -14,6 +14,7 @@ export { AbortError } from "./engine.js"
 export { DaoError, ModelError, ToolError, TimeoutError } from "./core/errors.js"
 export { plugin, logger } from "./plugin.js"
 export { team } from "./team.js"
+export { mockModel } from "./mock.js"
 
 // 类型导出
 export type {
@@ -23,6 +24,8 @@ export type {
   RunResult,
   RunEvent,
   TokenUsage,
+  GenerateOptions,
+  GenerateResult,
   // Tool
   ToolOptions,
   ToolInstance,

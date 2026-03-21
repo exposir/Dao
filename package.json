@@ -1,6 +1,6 @@
 {
   "name": "dao-ai",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Dao（道）— 大道至简的 AI Agent 框架",
   "type": "module",
   "main": "./dist/index.js",
@@ -50,14 +50,14 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.41",
-    "ai": "^6.0.116"
+    "@ai-sdk/openai": "^3.0.47",
+    "ai": "^6.0.134"
   },
   "peerDependencies": {
-    "@ai-sdk/google": "^2.0.0",
-    "@ai-sdk/anthropic": "^2.0.0",
-    "@ai-sdk/moonshotai": "^0.1.0",
     "@ai-sdk/alibaba": "^0.1.0",
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/moonshotai": "^0.1.0",
     "@ai-sdk/zhipu": "^0.1.0"
   },
   "peerDependenciesMeta": {

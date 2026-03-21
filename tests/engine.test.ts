@@ -19,6 +19,7 @@ function mockAgent(): AgentInstance {
     chatStream: vi.fn(async function* () { yield "mock" }),
     runStream: vi.fn(async function* () {}),
     resume: vi.fn(),
+    generate: vi.fn(),
     clearMemory: vi.fn(),
     getConfig: vi.fn(() => ({})),
   }

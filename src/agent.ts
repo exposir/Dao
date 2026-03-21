@@ -5,8 +5,8 @@
  */
 
 import type { ModelMessage } from "ai"
-import type { AgentOptions, AgentInstance, RunResult, RunEvent, ToolInstance } from "./core/types.js"
-import { runLoop, runLoopStream } from "./core/loop.js"
+import type { AgentOptions, AgentInstance, RunResult, RunEvent, ToolInstance, GenerateOptions, GenerateResult } from "./core/types.js"
+import { runLoop, runLoopStream, runGenerate } from "./core/loop.js"
 import { runSteps } from "./engine.js"
 import { PluginManager } from "./plugin.js"
 import { tool } from "./tool.js"
@@ -294,6 +294,19 @@ export function agent(options: AgentOptions): AgentInstance {
           yield event
         }
         await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: streamUsage } })
+      } catch (err: any) {
+        await pm.emit("onError", instance, { error: err })
+        throw err
+      }
+    },
+
+    async generate<T = any>(task: string, generateOptions: GenerateOptions<T>): Promise<GenerateResult<T>> {
+      await ensureInit()
+
+      try {
+        const result = await runGenerate<T>(options, task, generateOptions, instance, pm)
+        await pm.emit("onComplete", instance, { result: { output: JSON.stringify(result.object), turns: [], usage: result.usage, duration: result.duration } })
+        return result
       } catch (err: any) {
         await pm.emit("onError", instance, { error: err })
         throw err

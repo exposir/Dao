@@ -12,7 +12,12 @@ const PROVIDERS: Record<string, ProviderEntry> = {
   deepseek: {
     create: async (apiKey: string) => {
       const { createOpenAI } = await import("@ai-sdk/openai")
-      const provider = createOpenAI({ apiKey, baseURL: "https://api.deepseek.com" })
+      const provider = createOpenAI({
+        apiKey,
+        baseURL: "https://api.deepseek.com",
+        // @ts-ignore: 当前 AI SDK 版本类型可能缺失兼容性字段，但在实际依赖项中可生效
+        compatibility: "compatible" // 兼容模式，关闭 strict json_schema 等非标准特性
+      })
       // 返回包装后的 provider，默认使用 chat completions 端点
       return (modelId: string) => provider.chat(modelId)
     },

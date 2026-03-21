@@ -124,8 +124,8 @@ describeE2E("E2E: plugin 生命周期", () => {
     const tracker = plugin({
       name: "tracker",
       hooks: {
-        beforeInput: () => hookLog.push("beforeInput"),
-        beforeModelCall: () => hookLog.push("beforeModelCall"),
+        beforeInput: () => { hookLog.push("beforeInput") },
+        beforeModelCall: () => { hookLog.push("beforeModelCall") },
         afterModelCall: (ctx: any) => {
           hookLog.push("afterModelCall")
           // 验证 response 结构
@@ -175,3 +175,4 @@ describeE2E("E2E: steps 引擎", () => {
     expect(result.usage.totalTokens).toBeGreaterThan(0)
   }, 60000)
 })
+

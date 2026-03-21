@@ -215,6 +215,8 @@ export interface AgentInstance {
   chat(message: string): Promise<string>
   /** 任务模式：执行任务直到完成 */
   run(task: string): Promise<RunResult>
+  /** 结构化输出：返回类型安全的 JSON 对象 */
+  generate<T = any>(task: string, options: GenerateOptions<T>): Promise<GenerateResult<T>>
   /** 流式对话 */
   chatStream(message: string): AsyncIterable<string>
   /** 流式任务执行 */
@@ -244,6 +246,34 @@ export interface TokenUsage {
   promptTokens: number
   completionTokens: number
   totalTokens: number
+}
+
+/** generate() 的选项 */
+export interface GenerateOptions<T = any> {
+  /**
+   * 输出 schema
+   * 支持 Zod schema（类型安全）或 JSON schema 对象
+   */
+  schema: any
+  /**
+   * schema 名称（用于 AI SDK 内部 function call 命名）
+   * @default "result"
+   */
+  schemaName?: string
+  /**
+   * schema 描述（帮助 LLM 理解输出格式）
+   */
+  schemaDescription?: string
+}
+
+/** generate() 的返回结果 */
+export interface GenerateResult<T = any> {
+  /** 结构化输出对象 */
+  object: T
+  /** 使用的 token 数 */
+  usage: TokenUsage
+  /** 执行耗时（毫秒） */
+  duration: number
 }
 
 /**

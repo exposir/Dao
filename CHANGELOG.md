@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0 (2026-03-22)
+
+### Features
+
+- **core**: 支持类型安全的结构化输出：`agent.generate()` 方法，底层接入 AI SDK 的 `generateObject`。
+- **core**: 新增测试辅助函数 `mockModel()`，用于创建按顺序返回预设文本或对象字符串的假模型。
+- **types**: 新增 `GenerateOptions<T>` 和 `GenerateResult<T>` 以加强对参数和返回结果的类型约束。
+- **infra**: AI SDK 及其各类 Provider 依赖（`ai` 和 `@ai-sdk/x`）版本前移至最新的 V2 / V3 规范。
+
 ## 2.1.0 (2026-03-21)
 
 ### Bug Fixes
