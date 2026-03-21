@@ -57,20 +57,49 @@
 - [x] Fallback Model（主模型失败自动切换备用模型）
 - [x] Agent 级委派（`delegates` 参数，无需 team 即可跨 agent 协作）
 
-## V2.1 📋 可观测
+## V2.1 ✅ 契约审计
 
-> 日志 + 链路追踪 + 可测试性
+> 代码/文档/类型全面对齐 + 测试覆盖
 
-- [ ] 结构化日志 + 链路追踪（`RunResult.requestId`）
-- [ ] OpenTelemetry 集成（可选依赖 `@opentelemetry/api`）
-- [ ] 可测试性（mock 模型注入 + 响应录制/回放）
+- [x] 5 轮深度审计，修复 13 个 bug（timer 悬挂、Promise.allSettled、流式 usage、lastResult 注入等）
+- [x] 8 个文档文件与代码实现完全对齐
+- [x] 测试从 48 增长到 65（含 8 个端到端 smoke test）
+- [x] `npm run typecheck` 覆盖 tests/
 
-## V2.2 📋 生态
+## V2.2 📋 实用增强
 
-> 上下文管理 + 成本控制 + MCP
+> 结构化输出 + 可测试性
 
-- [ ] 上下文窗口管理（token 计数 + 自动截断/摘要）
+- [ ] 结构化输出（基于 AI SDK `generateObject()`，agent 返回类型安全的 JSON）
+- [ ] 可测试性（`mockModel()` 辅助函数 + 响应录制/回放，方便用户给 agent 写单测）
+
+## V2.3 📋 生产就绪
+
+> 上下文管理 + 流式 steps + 成本控制
+
+- [ ] 上下文窗口管理（token 计数 + 自动截断/摘要，防止 `memory: true` 长对话爆 token）
+- [ ] 流式 steps（`runStream()` + steps 逐步流式输出，不再等全部完成）
 - [ ] 成本上限（`maxCostPerRun`）
+
+## V2.4 📋 生态扩展
+
+> 多模态 + MCP + 可观测
+
+- [ ] 多模态输入（图片/文件作为消息内容，支持 Gemini / GPT-4o / Claude）
 - [ ] MCP 协议支持
+- [ ] 结构化日志 + 链路追踪（`RunResult.requestId`）
+- [ ] OpenTelemetry 集成（可选依赖）
+- [ ] 国际化（内置 prompt 和错误信息支持英文，方便海外用户）
 
 > **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。
+
+---
+
+## 🚫 明确不做
+
+> 以下功能超出「大道至简」定位，不纳入框架核心：
+
+- **RAG** — 通过 `tool()` 接入向量数据库即可，不内置检索增强
+- **Agent 通信协议** — `team()` + `delegates` 已满足多 Agent 协作，不引入额外协议层
+- **沙箱 / 安全隔离** — 工具执行沙箱化过于重量级，安全由使用者自行控制
+- **长时运行 / 状态持久化** — 跑数小时、断点恢复、checkpoint 等机制过重，不符合轻量定位
