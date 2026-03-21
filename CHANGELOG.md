@@ -1,5 +1,41 @@
 # Changelog
 
+## 2.1.0 (2026-03-21)
+
+### Bug Fixes
+
+- **loop**: `runLoopStream()` 成功完成时未 `clearTimeout`，导致悬挂定时器后续触发 `AbortController.abort()`
+- **loop**: `afterModelCall` 三条路径（正常/fallback/流式）传参格式不统一，fallback 传纯字符串、流式传 `"(stream)"`，现统一为 `{ text, usage }` 对象
+- **engine**: `executeParallel()` 使用 `Promise.all()`，任一子步骤失败导致整个 parallel step 废弃，改为 `Promise.allSettled()` + 失败步骤记录 `{ error }`
+- **engine**: 字符串步骤和 TaskStep 未注入 `lastResult`，步骤间无上下文传递，现自动拼接到 prompt
+- **agent**: `run()` 步骤错误兜底 — `runSteps` 循环体加 try-catch，单步失败记录错误继续下一步（AbortError 穿透）
+- **agent**: `chatStream()` / `runStream()` 的 `onComplete` 传给插件的 `RunResult` 全是假值（duration=0, usage=0, output=""），现传真实数据
+- **agent**: `runStream()` steps 全失败时只输出最后一步错误，现与 `run()` 对齐输出每步错误汇总
+- **agent**: `globalPlugins` 仅存在于类型和文档，`agent()` 未合并全局插件，现通过 `getGlobalConfig()` 合并
+- **team**: `maxRounds` 默认值只补到自动 lead 分支，自定义 lead 分支回退到 agent 默认 50，现两分支都补 `?? 20`
+- **types**: `RunEvent` 的 `done` 事件 `data` 固定为 `null`，无法传出流式 usage，改为 `{ usage?: TokenUsage } | null`
+- **team**: `createTeamInstance` 内部参数 `memberResults` 类型为 `any[]`，收紧为 `RunResult[]`
+- **plugin**: 同名插件实例覆盖已有 store，加 `has()` 防重 + 注释说明共享行为
+- **README**: `runStream()` 示例 switch 缺少 `break` 导致 fallthrough
+
+### Features
+
+- **engine**: Steps 引擎自动将 `lastResult` 注入到每一步的 prompt（字符串步骤和 TaskStep 均支持）
+- **loop**: 流式 `done` 事件携带 `{ usage }` 数据，上层可提取真实 token 用量
+- **infra**: 新增 `tsconfig.check.json` 覆盖 `tests/` 类型检查，`npm run typecheck` 同时检查源码和测试
+- **tests**: 所有测试 mock 补齐 `resume()` 方法，与 `AgentInstance` 接口对齐
+
+### Docs
+
+- **agent-loop**: Grace Period 全部替换为 maxTurns 硬截断描述（当前使用 AI SDK `stepCountIs()` 实现）
+- **engine**: Prompt 模板改为实际的 `上一步结果 + 当前步骤` 格式；错误处理表对齐实际行为
+- **team**: 执行流程伪码更新为当前实现（单个 delegate 工具 + `maxRounds ?? 20`），usage 改为 lead + member 聚合
+- **api**: `RunEvent` done 事件类型、`TeamRunEvent` 交叉类型、delegate 工具示例同步
+- **design**: 模型层表格对齐实现（DeepSeek 用 `@ai-sdk/openai` 兼容模式、环境变量名修正）
+- **plugins**: store 描述改为"按 name 索引，同名插件共享"
+- **principles**: `createDelegateTools()` 引用替换为闭包封装描述
+- **README**: 文档链接修复（`docs/README.md` → `docs/index.md`）
+
 ## 2.0.1 (2026-03-20)
 
 ### Features
