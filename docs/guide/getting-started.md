@@ -166,6 +166,28 @@ const bot = agent({
 })
 ```
 
+## 结构化输出 (V2.2)
+
+如果需要模型返回严格符合类型定义的 JSON，可以使用 `generate()` 方法：
+
+```typescript
+import { z } from "zod"
+
+const bot = agent({ model: "openai/gpt-4o" })
+
+const result = await bot.generate("生成两个用户", {
+  schema: z.object({
+    users: z.array(z.object({
+      name: z.string(),
+      age: z.number(),
+    }))
+  })
+})
+
+console.log(result.object.users[0].name)
+console.log(result.usage.totalTokens)
+```
+
 ## 输出校验
 
 ```typescript

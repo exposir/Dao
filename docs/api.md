@@ -209,6 +209,9 @@ interface AgentInstance {
   /** 流式任务执行 */
   runStream(task: string): AsyncIterable<RunEvent>
 
+  /** 结构化输出任务执行 (V2.2) */
+  generate<T>(task: string, options: GenerateOptions<T>): Promise<GenerateResult<T>>
+
   /** 恢复被 wait 步骤暂停的执行 */
   resume(data?: any): void
 
@@ -223,6 +226,20 @@ interface RunResult {
   output: string
   turns: { turn: string; result: any }[]
   usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+  duration: number
+}
+
+/** 结构化输出配置 (V2.2) */
+interface GenerateOptions<T = any> {
+  schema: import("zod").ZodType<T> | import("ai").Schema<T>
+  schemaName?: string
+  schemaDescription?: string
+}
+
+/** 结构化输出结果 (V2.2) */
+interface GenerateResult<T = any> {
+  object: T
+  usage: TokenUsage
   duration: number
 }
 
@@ -655,7 +672,8 @@ export { plugin, logger } from "./plugin"
 export { configure } from "./config"
 export { registerProvider } from "./model"
 export { compileRules } from "./rules"
-export { AbortError } from "./engine"
+export { mockModel } from "./mock"
+export { AbortError, TimeoutError, ModelError } from "./engine"
 
 // registerProvider 类型
 function registerProvider(name: string, entry: ProviderEntry): void
