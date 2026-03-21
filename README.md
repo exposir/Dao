@@ -131,11 +131,11 @@ await squad.run("给项目添加用户登录功能");
 ```typescript
 for await (const event of bot.runStream("分析代码")) {
   switch (event.type) {
-    case "step_start": console.log(`▶ 步骤 ${event.data.index}`)
-    case "step_end":   console.log(`✓ 完成`)
-    case "tool_call":  console.log(`🔧 ${event.data.tool}`)
-    case "text":       process.stdout.write(event.data)
-    case "done":       console.log("完成")
+    case "step_start": console.log(`▶ 步骤 ${event.data.index}`); break
+    case "step_end":   console.log(`✓ 完成`); break
+    case "tool_call":  console.log(`🔧 ${event.data.tool}`); break
+    case "text":       process.stdout.write(event.data); break
+    case "done":       console.log("完成"); break
   }
 }
 ```

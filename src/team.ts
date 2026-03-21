@@ -112,7 +112,7 @@ export function team(options: TeamOptions): TeamInstance {
 function createTeamInstance(
   leadAgent: AgentInstance,
   members: Record<string, AgentInstance>,
-  memberResults: Record<string, any[]>,
+  memberResults: Record<string, RunResult[]>,
   options: TeamOptions,
 ): TeamInstance {
   return {

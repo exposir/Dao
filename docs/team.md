@@ -26,7 +26,6 @@ team.run("任务")
 function createAutoLead(
   members: Record<string, AgentInstance>,
   maxRounds: number,
-  delegateTools: ToolInstance[],
 ): AgentInstance {
   // 1. 收集所有成员信息
   const memberDescriptions = Object.entries(members)

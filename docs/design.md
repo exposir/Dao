@@ -299,10 +299,10 @@ tool() 定义 →
 
 | 模型 | provider | 用法 | 支持方式 |
 |---|---|---|---|
-| **DeepSeek** | `@ai-sdk/deepseek` | `"deepseek/deepseek-chat"` | 官方 |
-| **月之暗面 Kimi** | `@ai-sdk/moonshotai` | `"moonshotai/kimi-k2.5"` | 官方 |
-| **阿里通义千问 Qwen** | `@ai-sdk/alibaba` | `"alibaba/qwen3-max"` | 官方 |
-| **智谱 GLM** | `@ai-sdk/zhipu` | `"zhipu/glm-4-plus"` | 官方 |
+| **DeepSeek** | `@ai-sdk/openai`（兼容模式） | `"deepseek/deepseek-chat"` | 内置（baseURL 指向 api.deepseek.com） |
+| **月之暗面 Kimi** | `@ai-sdk/moonshotai` | `"moonshotai/kimi-k2.5"` | peerDependency，按需安装 |
+| **阿里通义千问 Qwen** | `@ai-sdk/alibaba` | `"alibaba/qwen3-max"` | peerDependency，按需安装 |
+| **智谱 GLM** | `@ai-sdk/zhipu` | `"zhipu/glm-4-plus"` | peerDependency，按需安装 |
 | **MiniMax** | 社区包 | `"minimax/minimax-m2"` | 通过 `registerProvider()` 接入 |
 | **百川 / Yi / 豆包** | OpenAI 兼容 | `"baichuan/Baichuan-4"` 等 | 通过 `registerProvider()` 接入 |
 
@@ -311,8 +311,8 @@ tool() 定义 →
 | 模型 | 用法 | 支持方式 |
 |---|---|---|
 | **OpenAI** | `"openai/gpt-4o"` | 内置 |
-| **Google Gemini** | `"google/gemini-2.5-pro"` | 内置 |
-| **Anthropic Claude** | `"anthropic/claude-sonnet-4-5"` | 内置 |
+| **Google Gemini** | `"google/gemini-2.5-pro"` | peerDependency，按需安装 |
+| **Anthropic Claude** | `"anthropic/claude-sonnet-4-5-20250514"` | peerDependency，按需安装 |
 | **xAI Grok** | `"xai/grok-4"` | 通过 `registerProvider()` 接入 |
 
 ```typescript
@@ -335,12 +335,13 @@ const qwen = agent({
 ```env
 # 开源模型
 DEEPSEEK_API_KEY=sk-xxx
-MOONSHOT_API_KEY=sk-xxx
+MOONSHOTAI_API_KEY=sk-xxx
 ALIBABA_API_KEY=sk-xxx
 
 # 商业模型
 OPENAI_API_KEY=sk-xxx
-GOOGLE_API_KEY=xxx
+GOOGLE_GENERATIVE_AI_API_KEY=xxx
+ANTHROPIC_API_KEY=sk-xxx
 ```
 
 ---
