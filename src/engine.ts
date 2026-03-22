@@ -37,12 +37,13 @@ export async function runSteps(
   steps: Step[],
   agent: AgentInstance,
   executeTask: ExecuteTaskFn,
+  initialResult?: any,
   onStepStart?: (step: Step, index: number) => void,
   onStepEnd?: (step: Step, index: number, result: any) => void,
   onWait?: () => Promise<any>,
 ): Promise<StepResult[]> {
   const history: StepResult[] = []
-  let lastResult: any = null
+  let lastResult: any = initialResult ?? null
 
   const ctx: StepContext = {
     lastResult: null,
@@ -130,7 +131,7 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
  * 并行执行多个子步骤
  */
 async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any[]> {
-  const concurrency = step.concurrency ?? Infinity
+  const concurrency = Math.max(1, step.concurrency ?? Infinity)
   const tasks = step.parallel
 
   /** 将 allSettled 结果提取为值或错误对象 */
@@ -164,32 +165,32 @@ async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask
  * 条件执行
  */
 async function executeConditional(step: ConditionalStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
-  let condition: boolean
-
-  if (typeof step.if === "string") {
-    // 字符串条件 → 让 Agent 判断
-    const answer = await ctx.agent.chat(
-      `请判断以下条件是否成立，只回答"YES"或"NO"：${step.if}`
-    )
-    const normalized = answer.trim().toUpperCase()
-    // 先检查否定，再检查肯定
-    const isNo = /\b(NO|FALSE)\b/.test(normalized) || /^(否|不是|没有|不)/.test(answer.trim())
-    const isYes = /\b(YES|TRUE)\b/.test(normalized) || /^(是|有|对)/.test(answer.trim())
-    condition = isYes && !isNo
-  } else {
-    // 函数条件 → 直接执行
-    condition = await step.if(ctx)
-  }
-
-  const branch = condition ? step.then : step.else
-  if (!branch) return null
-
-  // 支持重试
-  let lastError: any
   const maxAttempts = (step.retry ?? 0) + 1
+  let lastError: any
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
+      let condition: boolean
+
+      if (typeof step.if === "string") {
+        // 字符串条件 → 让 Agent 判断（只调用底层单轮查询，不落入 memory）
+        const answerResult = await executeTask(
+          `请判断以下条件是否成立，并联系上文只回答"YES"或"NO"：${step.if}`
+        )
+        const answer = answerResult.output
+        const normalized = answer.trim().toUpperCase()
+        // 先检查否定，再检查肯定
+        const isNo = /\b(NO|FALSE)\b/.test(normalized) || /^(否|不是|没有|不)/.test(answer.trim())
+        const isYes = /\b(YES|TRUE)\b/.test(normalized) || /^(是|有|对)/.test(answer.trim())
+        condition = isYes && !isNo
+      } else {
+        // 函数条件 → 直接执行
+        condition = await step.if(ctx)
+      }
+
+      const branch = condition ? step.then : step.else
+      if (!branch) return null
+
       return await executeStep(branch as Step, ctx, executeTask)
     } catch (err) {
       lastError = err

@@ -66,11 +66,13 @@
 - [x] 测试从 48 增长到 65（含 8 个端到端 smoke test）
 - [x] `npm run typecheck` 覆盖 tests/
 
-## V2.2 📋 实用增强
+## V2.2 ✅ 实用增强
 
-> 结构化输出 + 可测试性
+> 结构化输出 + 可测试性 + 事件
 
-- [ ] 结构化输出（基于 AI SDK `generateObject()`，agent 返回类型安全的 JSON）
+- [x] **Agent Hook / Events**：类似 `bot.on('tool_start')` 暴露内部状态 (通过插件系统实现)
+- [x] **结构化输出**：支持限制输出格式（如强制 JSON 与 Schema 校验）
+- [x] **测试支持**：提供专用的 mock adapter 方便给 Agent 编写单元测试
 - [ ] 可测试性（`mockModel()` 辅助函数 + 响应录制/回放，方便用户给 agent 写单测）
 
 ## V2.3 📋 生产就绪

@@ -54,7 +54,10 @@ function toAITools(
         }
 
         // confirm 机制
-        if (t.confirm && options?.onConfirm) {
+        if (t.confirm) {
+          if (!options?.onConfirm) {
+            throw new Error(`工具 "${t.name}" 要求确认执行，但未配置 onConfirm 回调`)
+          }
           const confirmed = await options.onConfirm(t.name, params)
           if (!confirmed) {
             const msg = `工具 "${t.name}" 被用户拒绝执行`
@@ -262,22 +265,19 @@ export async function runLoop(
         })
 
         if (timeoutId) clearTimeout(timeoutId)
+
+        const fallbackUsage = {
+          promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
+          completionTokens: fallbackResult.totalUsage?.outputTokens ?? 0,
+          totalTokens: (fallbackResult.totalUsage?.inputTokens ?? 0) + (fallbackResult.totalUsage?.outputTokens ?? 0),
+        }
         if (pm) {
-          const fallbackUsage = {
-            promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
-            completionTokens: fallbackResult.totalUsage?.outputTokens ?? 0,
-            totalTokens: (fallbackResult.totalUsage?.inputTokens ?? 0) + (fallbackResult.totalUsage?.outputTokens ?? 0),
-          }
           await pm.emit("afterModelCall", agentInstance, {
             response: { text: fallbackResult.text, usage: fallbackUsage },
           })
         }
 
-        const usage: TokenUsage = {
-          promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
-          completionTokens: fallbackResult.totalUsage?.outputTokens ?? 0,
-          totalTokens: (fallbackResult.totalUsage?.inputTokens ?? 0) + (fallbackResult.totalUsage?.outputTokens ?? 0),
-        }
+        const usage: TokenUsage = fallbackUsage
 
         const turnResults = fallbackResult.steps?.map((step, i) => ({
           turn: `fallback-turn-${i + 1}`,
@@ -353,6 +353,8 @@ export async function* runLoopStream(
     }
   }
 
+  let hasYieldedTexto = false
+
   try {
     const result = streamText({
       model,
@@ -368,6 +370,7 @@ export async function* runLoopStream(
 
     let fullText = ""
     for await (const part of result.textStream) {
+      if (part) hasYieldedTexto = true
       // 先发累积的 tool_call 事件
       while (toolCallEvents.length > 0) {
         yield toolCallEvents.shift()!
@@ -408,6 +411,20 @@ export async function* runLoopStream(
         `流式调用超时（${options.timeout}ms）`,
         options.timeout!,
       )
+    }
+
+    if (options.fallbackModel && !hasYieldedTexto) {
+      try {
+        const fallbackOptions = { ...options, fallbackModel: undefined }
+        const childGen = runLoopStream(fallbackOptions, task, messageHistory, agentInstance, pm)
+        yield* childGen
+        return
+      } catch (fbErr: any) {
+        throw new ModelError(
+          `流式调用在备用模型上也失败：${fbErr.message}`,
+          fbErr,
+        )
+      }
     }
 
     throw new ModelError(
@@ -456,12 +473,17 @@ export async function runGenerate<T = any>(
 
   const startTime = Date.now()
 
+  let resolvedSchema = generateOptions.schema
+  if (resolvedSchema && typeof resolvedSchema === "object" && typeof resolvedSchema.parse !== "function" && !resolvedSchema.jsonSchema) {
+    resolvedSchema = jsonSchema(resolvedSchema as any)
+  }
+
   try {
     const generateOptionsAny: any = {
       model,
       system: systemPrompt || undefined,
       prompt: task,
-      schema: generateOptions.schema,
+      schema: resolvedSchema,
       schemaName: generateOptions.schemaName ?? "result",
       schemaDescription: generateOptions.schemaDescription,
       mode: "json", // DeepSeek 等模型可能不支持默认的 auto/json_schema，显式指定 json 模式
@@ -501,6 +523,44 @@ export async function runGenerate<T = any>(
         `结构化输出超时（${options.timeout}ms）`,
         options.timeout!,
       )
+    }
+
+    if (options.fallbackModel) {
+      try {
+        const fallbackModel = await resolveModel(options.fallbackModel)
+        const fallbackOptionsAny: any = {
+          model: fallbackModel,
+          system: systemPrompt || undefined,
+          prompt: task,
+          schema: resolvedSchema,
+          schemaName: generateOptions.schemaName ?? "result",
+          schemaDescription: generateOptions.schemaDescription,
+          temperature: options.temperature,
+          maxOutputTokens: options.maxTokens,
+          maxRetries: options.retry?.maxRetries ?? 2,
+          abortSignal: controller?.signal,
+        }
+        const fallbackResult = await generateObject(fallbackOptionsAny)
+        
+        if (timeoutId) clearTimeout(timeoutId)
+
+        const fallbackUsage: TokenUsage = {
+          promptTokens: (fallbackResult.usage as any)?.promptTokens ?? (fallbackResult.usage as any)?.inputTokens ?? 0,
+          completionTokens: (fallbackResult.usage as any)?.completionTokens ?? (fallbackResult.usage as any)?.outputTokens ?? 0,
+          totalTokens: ((fallbackResult.usage as any)?.promptTokens ?? (fallbackResult.usage as any)?.inputTokens ?? 0) + ((fallbackResult.usage as any)?.completionTokens ?? (fallbackResult.usage as any)?.outputTokens ?? 0),
+        }
+
+        return {
+          object: fallbackResult.object as T,
+          usage: fallbackUsage,
+          duration: Date.now() - startTime,
+        }
+      } catch (fbErr: any) {
+        throw new ModelError(
+          `结构化输出在备用模型上也失败：${fbErr.message}`,
+          fbErr,
+        )
+      }
     }
 
     throw new ModelError(

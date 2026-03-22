@@ -85,8 +85,7 @@ describe("runSteps()", () => {
     const agent = mockAgent()
     const onStart = vi.fn()
     const onEnd = vi.fn()
-
-    await runSteps(["步骤"], agent, mockExecuteTask, onStart, onEnd)
+    await runSteps(["步骤"], agent, mockExecuteTask, undefined, onStart, onEnd)
 
     expect(onStart).toHaveBeenCalledWith("步骤", 0)
     expect(onEnd).toHaveBeenCalledWith("步骤", 0, "完成: 步骤")

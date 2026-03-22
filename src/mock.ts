@@ -61,6 +61,7 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
           inputTokens: text.length,
           outputTokens: text.length,
         },
+        warnings: [],
         response: {
           id: `mock-${Date.now()}`,
           timestamp: new Date(),

@@ -42,11 +42,14 @@ export function team(options: TeamOptions): TeamInstance {
     })
     .join("\n")
 
-  // 用闭包收集 member 执行结果
+  // 用闭包收集 member 执行结果 (改为每个实例方法内重置或传递)
   const memberResults: Record<string, RunResult[]> = {}
   for (const name of Object.keys(members)) {
     memberResults[name] = []
   }
+
+  // 用于 stream 时的事件合并
+  let streamYieldCb: ((event: TeamRunEvent) => void) | null = null
 
   // 为 lead 创建 delegate 工具
   const delegateTool = tool({
@@ -65,9 +68,30 @@ export function team(options: TeamOptions): TeamInstance {
       }
 
       try {
-        const result = await memberAgent.run(task)
-        memberResults[memberName].push(result)
-        return result.output
+        if (streamYieldCb) {
+          let fullOutput = ""
+          let lastUsage = undefined
+          let duration = 0
+          for await (const event of memberAgent.runStream(task)) {
+             streamYieldCb({ ...event, member: memberName } as TeamRunEvent)
+             if (event.type === "text") fullOutput += event.data
+             if (event.type === "done" && event.data?.usage) {
+               lastUsage = event.data.usage
+             }
+          }
+          const res: RunResult = {
+             output: fullOutput,
+             turns: [],
+             usage: lastUsage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+             duration
+          }
+          memberResults[memberName].push(res)
+          return fullOutput
+        } else {
+          const result = await memberAgent.run(task)
+          memberResults[memberName].push(result)
+          return result.output
+        }
       } catch (err: any) {
         return `成员 "${memberName}" 执行失败：${err.message}`
       }
@@ -78,22 +102,24 @@ export function team(options: TeamOptions): TeamInstance {
   let leadAgent: AgentInstance
 
   if (lead) {
-    // 用户提供了 lead，注入 delegate 工具
+    // 用户提供了 lead，注入 delegate 工具但不破坏原 prompt 结构
     const config = lead.getConfig()
+    const extraPrompt = `\n\n你可以使用 delegate 工具委派任务给团队成员。\n团队成员：\n${memberDescriptions}`
+    
     leadAgent = agent({
       ...config,
       maxTurns: maxRounds ?? config.maxTurns ?? 20,
       plugins: plugins ? [...(config.plugins ?? []), ...plugins] : config.plugins,
       tools: [...(config.tools ?? []), delegateTool],
-      systemPrompt:
-        (config.systemPrompt ?? "") +
-        `\n\n你可以使用 delegate 工具委派任务给团队成员。\n团队成员：\n${memberDescriptions}`,
+      systemPrompt: config.systemPrompt ? config.systemPrompt + extraPrompt : undefined,
+      background: !config.systemPrompt ? (config.background ?? "") + extraPrompt : config.background,
     })
   } else {
     // 无 lead，自动创建
+    const fallbackModel = Object.values(members).map(m => m.getConfig().model).find(Boolean)
     leadAgent = agent({
       role: "团队负责人",
-      model: Object.values(members)[0]?.getConfig().model,
+      model: fallbackModel,
       maxTurns: maxRounds ?? 20,
       plugins,
       systemPrompt:
@@ -105,18 +131,10 @@ export function team(options: TeamOptions): TeamInstance {
     })
   }
 
-  return createTeamInstance(leadAgent, members, memberResults, options)
-}
-
-/** 创建 TeamInstance */
-function createTeamInstance(
-  leadAgent: AgentInstance,
-  members: Record<string, AgentInstance>,
-  memberResults: Record<string, RunResult[]>,
-  options: TeamOptions,
-): TeamInstance {
   return {
     async run(task: string): Promise<TeamRunResult> {
+      // 每次运行重置 memberResults 本地闭包状态
+      for (const name of Object.keys(memberResults)) memberResults[name] = []
       const startTime = Date.now()
 
       const result = await leadAgent.run(task)
@@ -131,18 +149,50 @@ function createTeamInstance(
 
       return {
         output: result.output,
-        memberResults,
+        // 这里需要深拷贝传递，否则多次外部 run() 并发引用的还是同一个引用对象
+        memberResults: JSON.parse(JSON.stringify(memberResults)),
         usage: totalUsage,
         duration: Date.now() - startTime,
       }
     },
 
     async *runStream(task: string): AsyncIterable<TeamRunEvent> {
-      for await (const event of leadAgent.runStream(task)) {
-        yield {
-          ...event,
-          member: "lead",
-        } as TeamRunEvent
+      for (const name of Object.keys(memberResults)) memberResults[name] = []
+      
+      const queue: TeamRunEvent[] = []
+      let isLeadDone = false
+      let resumeResolve: Function = () => {}
+
+      streamYieldCb = (event) => {
+        queue.push(event)
+        resumeResolve?.()
+      }
+
+      // 启动 lead 流水
+      const leadPromise = (async () => {
+        try {
+          for await (const event of leadAgent.runStream(task)) {
+            queue.push({ ...event, member: "lead" } as TeamRunEvent)
+            resumeResolve()
+          }
+        } finally {
+          isLeadDone = true
+          resumeResolve()
+        }
+      })()
+
+      // 并归提取流式事件
+      try {
+        while (!isLeadDone || queue.length > 0) {
+          if (queue.length === 0) {
+            await new Promise<void>(r => { resumeResolve = r })
+          }
+          while (queue.length > 0) {
+            yield queue.shift()!
+          }
+        }
+      } finally {
+        streamYieldCb = null
       }
     },
 

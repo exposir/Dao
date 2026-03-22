@@ -60,4 +60,23 @@ describe("mockModel()", () => {
     const reply = await bot.chat("X 等于什么")
     expect(reply).toBe("对的")
   })
+
+  it("应该支持 generate() 生成结构化对象", async () => {
+    const bot = agent({
+      modelProvider: mockModel([`{"name":"Alice","age":20}`]),
+    })
+
+    const result = await bot.generate("生成一个用户", {
+      schema: {
+        type: "object",
+        properties: { name: { type: "string" }, age: { type: "number" } },
+        required: ["name", "age"]
+      }
+    })
+
+    expect(result.object.name).toBe("Alice")
+    expect(result.object.age).toBe(20)
+    expect(result.usage.totalTokens).toBeGreaterThan(0)
+    expect(result.duration).toBeGreaterThanOrEqual(0)
+  })
 })

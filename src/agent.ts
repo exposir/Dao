@@ -91,22 +91,8 @@ export function agent(options: AgentOptions): AgentInstance {
     }
   }
 
-  // wait / resume 机制
-  let waitResolve: ((data?: any) => void) | null = null
-
-  function onWait(): Promise<any> {
-    return new Promise((resolve) => {
-      waitResolve = resolve
-    })
-  }
-
-  const stepUsages: { promptTokens: number; completionTokens: number; totalTokens: number }[] = []
-
-  async function executeTask(task: string): Promise<RunResult> {
-    const result = await runLoop(options, task, [], instance, pm)
-    stepUsages.push(result.usage)
-    return result
-  }
+  // wait / resume 机制 (改为 Set 支持并发的 agent.run)
+  const waitResolves = new Set<(data?: any) => void>()
 
   const instance: AgentInstance = {
     async chat(message: string): Promise<string> {
@@ -134,21 +120,32 @@ export function agent(options: AgentOptions): AgentInstance {
 
     async run(task: string): Promise<RunResult> {
       await ensureInit()
+      await pm.emit("beforeInput", instance, { message: task })
 
       try {
         // 如果有 steps，使用 Steps 引擎
         if (options.steps?.length) {
-          stepUsages.length = 0  // 清空上次 run 的累积
+          const stepUsages: { promptTokens: number; completionTokens: number; totalTokens: number }[] = []
           const startTime = Date.now()
+
+          const executeTaskLocal = async (subTask: string) => {
+            const res = await runLoop(options, subTask, [], instance, pm)
+            stepUsages.push(res.usage)
+            return res
+          }
+
+          const onWaitLocal = () => new Promise<any>(resolve => waitResolves.add(resolve))
+
           const stepResults = await runSteps(
             options.steps,
             instance,
-            executeTask,
-            undefined,
+            executeTaskLocal,
+            task, // 把 task 作为初始 lastResult 传给 steps 引擎
+            undefined, // onStepStart
             async (step, _index, result) => {
               await pm.emit("afterStep", instance, { step, result })
             },
-            onWait,
+            onWaitLocal,
           )
 
           const lastResult = stepResults[stepResults.length - 1]
@@ -230,18 +227,28 @@ export function agent(options: AgentOptions): AgentInstance {
 
     async *runStream(task: string): AsyncIterable<RunEvent> {
       await ensureInit()
+      await pm.emit("beforeInput", instance, { message: task })
       const startTime = Date.now()
 
       try {
         // 如果有 steps，走 steps 引擎
         if (options.steps?.length) {
-          stepUsages.length = 0
+          const stepUsages: { promptTokens: number; completionTokens: number; totalTokens: number }[] = []
           const events: RunEvent[] = []
+
+          const executeTaskLocal = async (subTask: string) => {
+            const res = await runLoop(options, subTask, [], instance, pm)
+            stepUsages.push(res.usage)
+            return res
+          }
+
+          const onWaitLocal = () => new Promise<any>(resolve => waitResolves.add(resolve))
 
           const stepResults = await runSteps(
             options.steps,
             instance,
-            executeTask,
+            executeTaskLocal,
+            task, // 将 task 作为初始上下文
             // onStepStart
             (step, index) => {
               const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
@@ -274,14 +281,17 @@ export function agent(options: AgentOptions): AgentInstance {
               : JSON.stringify(lastResult?.result ?? "")
           }
           yield { type: "text", data: outputText }
-          yield { type: "done", data: null }
 
           const totalUsage = {
             promptTokens: stepUsages.reduce((s, u) => s + u.promptTokens, 0),
             completionTokens: stepUsages.reduce((s, u) => s + u.completionTokens, 0),
             totalTokens: stepUsages.reduce((s, u) => s + u.totalTokens, 0),
           }
-          await pm.emit("onComplete", instance, { result: { output: outputText, duration: Date.now() - startTime, turns: stepResults.map((s, i) => ({ turn: `step-${i + 1}`, result: s.result })), usage: totalUsage } })
+          yield { type: "done", data: { usage: totalUsage } }
+
+          await pm.emit("onComplete", instance, {
+            result: { output: outputText, turns: stepResults.map((s, i) => ({ turn: `step-${i + 1}`, result: s.result })), usage: totalUsage, duration: Date.now() - startTime },
+          })
           return
         }
 
@@ -302,9 +312,10 @@ export function agent(options: AgentOptions): AgentInstance {
 
     async generate<T = any>(task: string, generateOptions: GenerateOptions<T>): Promise<GenerateResult<T>> {
       await ensureInit()
+      await pm.emit("beforeInput", instance, { message: task })
 
       try {
-        const result = await runGenerate<T>(options, task, generateOptions, instance, pm)
+        const result = await runGenerate(options, task, generateOptions, instance, pm)
         await pm.emit("onComplete", instance, { result: { output: JSON.stringify(result.object), turns: [], usage: result.usage, duration: result.duration } })
         return result
       } catch (err: any) {
@@ -314,10 +325,10 @@ export function agent(options: AgentOptions): AgentInstance {
     },
 
     resume(data?: any): void {
-      if (waitResolve) {
-        waitResolve(data)
-        waitResolve = null
+      for (const resolve of waitResolves) {
+        resolve(data)
       }
+      waitResolves.clear()
     },
 
     clearMemory(): void {
@@ -325,7 +336,8 @@ export function agent(options: AgentOptions): AgentInstance {
     },
 
     getConfig(): AgentOptions {
-      return { ...options }
+      // 深度拷贝以防反向污染
+      return JSON.parse(JSON.stringify(options))
     },
   }
 

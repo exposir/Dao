@@ -138,6 +138,23 @@ describe("store 共享机制", () => {
 
     // p1 第一次 +1 = 1，p2 +10 = 11，p1 第二次 +1 = 12
     // 通过第三次 emit 验证 store 确实共享
+    let finalStoreCount = 0
+    const p3 = plugin({
+      name: "counter",
+      hooks: {
+        beforeInput: (ctx: any) => {
+          finalStoreCount = ctx.store.count
+        }
+      }
+    })
+    const pm2 = new PluginManager([p1, p2, p3])
+    await pm2.emit("beforeInput", agent, { message: "init" })
+    await pm2.emit("afterModelCall", agent, { response: { text: "hi", usage: { promptTokens:0, completionTokens:0, totalTokens:0 } } })
+    await pm2.emit("beforeInput", agent, { message: "check" })
+    
+    // 第三次 emit ("beforeInput") 时，p1 再 +1 = 12
+    // 但当轮到 p3 执行 beforeInput 时，获取到的是经过 p1 修改后的 12
+    expect(finalStoreCount).toBe(12)
   })
 
   it("不同名插件应该有独立的 store", async () => {
