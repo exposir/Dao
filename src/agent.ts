@@ -345,7 +345,11 @@ export function agent(options: AgentOptions): AgentInstance {
         plugins: options.plugins ? [...options.plugins] : undefined,
         steps: options.steps ? [...options.steps] : undefined,
         // 嵌套对象拷贝
-        rules: options.rules ? { ...options.rules } : undefined,
+        rules: options.rules ? {
+          ...options.rules,
+          focus: options.rules.focus ? [...options.rules.focus] : undefined,
+          reject: options.rules.reject ? [...options.rules.reject] : undefined,
+        } : undefined,
         contextWindow: options.contextWindow ? { ...options.contextWindow } : undefined,
         retry: options.retry ? { ...options.retry } : undefined,
         delegates: options.delegates ? { ...options.delegates } : undefined,

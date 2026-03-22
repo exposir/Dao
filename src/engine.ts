@@ -166,12 +166,12 @@ async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask
  */
 async function executeConditional(step: ConditionalStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
   const maxAttempts = (step.retry ?? 0) + 1
-  let lastError: any
+  let lastResult: any = null
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      let condition: boolean
+    let condition: boolean
 
+    try {
       if (typeof step.if === "string") {
         // 字符串条件 → 让 Agent 判断（只调用底层单轮查询，不落入 memory）
         const answerResult = await executeTask(
@@ -187,18 +187,35 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
         // 函数条件 → 直接执行
         condition = await step.if(ctx)
       }
-
-      const branch = condition ? step.then : step.else
-      if (!branch) return null
-
-      return await executeStep(branch as Step, ctx, executeTask)
     } catch (err) {
-      lastError = err
       if (err instanceof AbortError) throw err
+      // 条件评估失败，视为 false
+      condition = false
+    }
+
+    if (condition) {
+      // 条件为 YES → 执行 then 分支
+      if (step.then) {
+        try {
+          lastResult = await executeStep(step.then as Step, ctx, executeTask)
+        } catch (err) {
+          if (err instanceof AbortError) throw err
+          lastResult = { error: (err as Error).message }
+        }
+      }
+      // 如果还有重试次数，继续循环重新评估条件
+      continue
+    } else {
+      // 条件为 NO → 执行 else 分支（如有）并结束
+      if (step.else) {
+        return await executeStep(step.else as Step, ctx, executeTask)
+      }
+      return lastResult
     }
   }
 
-  throw lastError
+  // 达到最大重试次数，条件仍为 YES → 返回最后一次 then 的结果
+  return lastResult
 }
 
 /** 类型守卫 */
