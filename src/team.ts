@@ -48,8 +48,8 @@ export function team(options: TeamOptions): TeamInstance {
     memberResults[name] = []
   }
 
-  // 用于 stream 时的事件合并
-  let streamYieldCb: ((event: TeamRunEvent) => void) | null = null
+  // 用于 stream 时的事件合并（使用 ref 对象以支持并发安全）
+  const streamRef: { yieldCb: ((event: TeamRunEvent) => void) | null } = { yieldCb: null }
 
   // 为 lead 创建 delegate 工具
   const delegateTool = tool({
@@ -68,12 +68,13 @@ export function team(options: TeamOptions): TeamInstance {
       }
 
       try {
-        if (streamYieldCb) {
+        if (streamRef.yieldCb) {
+          const yieldCb = streamRef.yieldCb
           let fullOutput = ""
           let lastUsage = undefined
           let duration = 0
           for await (const event of memberAgent.runStream(task)) {
-             streamYieldCb({ ...event, member: memberName } as TeamRunEvent)
+             yieldCb({ ...event, member: memberName } as TeamRunEvent)
              if (event.type === "text") fullOutput += event.data
              if (event.type === "done" && event.data?.usage) {
                lastUsage = event.data.usage
@@ -163,7 +164,7 @@ export function team(options: TeamOptions): TeamInstance {
       let isLeadDone = false
       let resumeResolve: Function = () => {}
 
-      streamYieldCb = (event) => {
+      streamRef.yieldCb = (event) => {
         queue.push(event)
         resumeResolve?.()
       }
@@ -192,7 +193,7 @@ export function team(options: TeamOptions): TeamInstance {
           }
         }
       } finally {
-        streamYieldCb = null
+        streamRef.yieldCb = null
       }
     },
 

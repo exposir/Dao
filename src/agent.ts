@@ -260,6 +260,7 @@ export function agent(options: AgentOptions): AgentInstance {
               events.push({ type: "step_end", data: { step: stepName, index, result } })
               await pm.emit("afterStep", instance, { step, result })
             },
+            onWaitLocal,
           )
 
           // 发所有事件
@@ -336,8 +337,19 @@ export function agent(options: AgentOptions): AgentInstance {
     },
 
     getConfig(): AgentOptions {
-      // 深度拷贝以防反向污染
-      return JSON.parse(JSON.stringify(options))
+      // 选择性拷贝：纯数据字段深拷贝防污染，函数/对象引用保持原样
+      return {
+        ...options,
+        // 数组类型浅拷贝一层（防止 push/splice 污染原数组）
+        tools: options.tools ? [...options.tools] : undefined,
+        plugins: options.plugins ? [...options.plugins] : undefined,
+        steps: options.steps ? [...options.steps] : undefined,
+        // 嵌套对象拷贝
+        rules: options.rules ? { ...options.rules } : undefined,
+        contextWindow: options.contextWindow ? { ...options.contextWindow } : undefined,
+        retry: options.retry ? { ...options.retry } : undefined,
+        delegates: options.delegates ? { ...options.delegates } : undefined,
+      }
     },
   }
 

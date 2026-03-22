@@ -231,7 +231,8 @@ interface RunResult {
 
 /** 结构化输出配置 (V2.2) */
 interface GenerateOptions<T = any> {
-  schema: import("zod").ZodType<T> | import("ai").Schema<T>
+  /** 支持 Zod schema、AI SDK Schema 或原生 JSON Schema 对象 */
+  schema: import("zod").ZodType<T> | import("ai").Schema<T> | Record<string, any>
   schemaName?: string
   schemaDescription?: string
 }
@@ -653,7 +654,7 @@ interface ConfigOptions {
   }
 
   /**
-   * 成本上限（V2.2 计划）
+   * 成本上限（V2.3 计划）
    */
   maxCostPerRun?: number
 }

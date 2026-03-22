@@ -258,6 +258,7 @@ export async function runLoop(
           temperature: options.temperature,
           maxOutputTokens: options.maxTokens,
           maxRetries: options.retry?.maxRetries ?? 2,
+          abortSignal: controller?.signal,
           stopWhen: stepCountIs(maxTurns),
           providerOptions: {
             openai: { strictJsonSchema: false },

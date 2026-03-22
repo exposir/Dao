@@ -104,15 +104,17 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
 
       return {
         stream,
+        rawCall: {
+          rawPrompt: null,
+          rawSettings: {},
+        },
+        rawResponse: undefined,
+        warnings: [],
         response: {
           id: `mock-stream-${Date.now()}`,
           timestamp: new Date(),
           modelId: "mock-model",
           headers: {},
-        },
-        rawCall: {
-          rawPrompt: null,
-          rawSettings: {},
         },
         request: { body: undefined },
       }

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.2.1 (2026-03-22)
+
+### Bug Fixes
+
+- **agent**: `getConfig()` 使用 `JSON.parse(JSON.stringify())` 导致 tools/plugins/steps 等函数字段丢失，改为选择性拷贝
+- **agent**: `runStream()` + steps 分支未传 `onWait`，WaitStep 在流式模式下直接抛错
+- **agent**: `run()`/`runStream()`/`generate()` 入口统一触发 `beforeInput` 插件生命周期
+- **loop**: `confirm: true` 工具在未配置 `onConfirm` 时静默绕过确认，改为直接抛错（安全修复）
+- **loop**: `fallbackModel` 仅在 `run()` 中生效，`runLoopStream()` 和 `runGenerate()` 不支持，已补全
+- **loop**: `runLoop()` 的 fallback 分支未传递 `abortSignal`，备用模型不受超时约束
+- **loop**: `generate()` 传入原生 JSON Schema 对象时报 `schema is not a function`，自动包装 `jsonSchema()`
+- **engine**: `ConditionalStep.retry` 实现为 retry-on-error，文档描述为 poll-until-condition-changes，对齐代码行为
+- **engine**: `parallel.concurrency <= 0` 导致 `for` 循环无法推进卡死，加 `Math.max(1, ...)`
+- **team**: `memberResults` 在 team 闭包级累积，多次 `run()` 串历史结果，每次 run 入口重置
+- **team**: `team({ lead })` 强制转 systemPrompt 覆盖原 lead 配置，改为智能追加
+- **team**: `runStream()` 只发 lead 事件，成员执行过程无流式暴露，改用 async queue multiplexing
+- **team**: `streamYieldCb` 为闭包级 `let` 变量，并发 `runStream()` 互相覆盖，改为 ref 对象
+- **team**: 自动创建 lead 时只取第一个成员模型，改用 `.find(Boolean)` 找到有模型的成员
+- **mock**: `doGenerate` 缺少 `warnings` 字段导致 AI SDK 校验告警
+- **mock**: `doStream` 缺少 `warnings` / `rawResponse` 字段
+- **plugin.test**: "同名插件共享 store" 测试缺少实际断言
+- **generate.test**: 文件名和注释写了 generate 但未包含 `generate()` 行为测试，已补充
+
+### Docs
+
+- **engine.md**: retry 行为描述从 poll-until-condition-changes 更正为 retry-on-error
+- **agent-loop.md**: confirm 流程图补充「未配 onConfirm → 直接抛错」分支
+- **tools.md**: 补充 `confirm: true` + 无 `onConfirm` 时抛错的安全行为说明
+- **api.md**: `GenerateOptions.schema` 类型补充 `Record<string, any>` 支持原生 JSON Schema
+- **api.md**: `maxCostPerRun` 计划版本从 V2.2 更正为 V2.3
+- **types.ts**: `contextWindow` 计划版本从 V2.2 更正为 V2.3
+- **roadmap.md**: 删除与已完成项重复的 mockModel 条目，V2.2 标记为 ✅
+
 ## 2.2.0 (2026-03-22)
 
 ### Features

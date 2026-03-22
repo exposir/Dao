@@ -134,7 +134,8 @@ function buildSystemPrompt(options: AgentOptions): string {
   │   └─ 找不到？→ 告诉 LLM 工具不存在
   │
   ├─ confirm: true？
-  │   └─ 等待用户确认
+  │   ├─ 未配置 onConfirm？→ 直接抛错（安全设计）
+  │   └─ 有 onConfirm → 等待用户确认
   │       ├─ 确认 → 继续
   │       └─ 拒绝 → 告诉 LLM 用户拒绝了该操作
   │

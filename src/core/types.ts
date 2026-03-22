@@ -198,7 +198,7 @@ export interface AgentOptions {
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
   /** 备用模型，主模型失败后自动切换 */
   fallbackModel?: string
-  /** 上下文窗口配置 @planned V2.2 */
+  /** 上下文窗口配置 @planned V2.3 */
   contextWindow?: {
     maxTokens?: number
     strategy?: "truncate" | "summarize"

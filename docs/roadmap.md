@@ -73,7 +73,7 @@
 - [x] **Agent Hook / Events**：类似 `bot.on('tool_start')` 暴露内部状态 (通过插件系统实现)
 - [x] **结构化输出**：支持限制输出格式（如强制 JSON 与 Schema 校验）
 - [x] **测试支持**：提供专用的 mock adapter 方便给 Agent 编写单元测试
-- [ ] 可测试性（`mockModel()` 辅助函数 + 响应录制/回放，方便用户给 agent 写单测）
+
 
 ## V2.3 📋 生产就绪
 
