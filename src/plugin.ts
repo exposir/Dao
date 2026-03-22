@@ -85,9 +85,9 @@ export class PluginManager {
         store: this.stores.get(p.name) ?? {},
         skip: () => { skipped = true },
         ...extra,
-      } as any
+      }
 
-      await (hook as any)(ctx)
+      await (hook as (ctx: HookContext) => void | Promise<void>)(ctx)
       if (skipped) break
     }
 
@@ -122,31 +122,31 @@ export function logger(options?: {
     name: "logger",
     hooks: {
       beforeInput: (ctx) => {
-        console.log(`${prefix} 📥 输入: ${(ctx as any).message}`)
+        console.log(`${prefix} 📥 输入: ${ctx.message}`)
       },
       beforeModelCall: () => {
         console.log(`${prefix} 🤖 调用模型...`)
       },
       afterModelCall: (ctx) => {
-        const resp = (ctx as any).response
+        const resp = ctx.response
         const text = typeof resp === "string" ? resp : JSON.stringify(resp)?.slice(0, 100)
         console.log(`${prefix} ✅ 模型返回: ${text}...`)
       },
       beforeToolCall: (ctx) => {
-        console.log(`${prefix} 🔧 调用工具: ${(ctx as any).tool}`)
+        console.log(`${prefix} 🔧 调用工具: ${ctx.tool}`)
       },
       afterToolCall: (ctx) => {
-        console.log(`${prefix} ✅ 工具结果: ${JSON.stringify((ctx as any).result)?.slice(0, 100)}`)
+        console.log(`${prefix} ✅ 工具结果: ${JSON.stringify(ctx.result)?.slice(0, 100)}`)
       },
       onComplete: (ctx) => {
-        const result = (ctx as any).result
+        const result = ctx.result
         console.log(`${prefix} 🏁 完成 (${result.duration}ms)`)
         if (showUsage && result.usage) {
           console.log(`${prefix} 📊 tokens: ${result.usage.totalTokens}`)
         }
       },
       onError: (ctx) => {
-        console.error(`${prefix} ❌ 错误: ${(ctx as any).error.message}`)
+        console.error(`${prefix} ❌ 错误: ${ctx.error.message}`)
       },
     },
   })

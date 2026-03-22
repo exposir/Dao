@@ -130,3 +130,15 @@ export function detectDefaultModel(): string | undefined {
 export function getProviderNames(): string[] {
   return Object.keys(PROVIDERS)
 }
+
+/** 初始 provider 快照（用于 reset） */
+const INITIAL_PROVIDER_NAMES = Object.keys(PROVIDERS)
+
+/** 重置 provider 注册表（测试用，移除所有自定义注册的 provider） */
+export function resetProviders(): void {
+  for (const key of Object.keys(PROVIDERS)) {
+    if (!INITIAL_PROVIDER_NAMES.includes(key)) {
+      delete PROVIDERS[key]
+    }
+  }
+}

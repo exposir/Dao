@@ -173,8 +173,10 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 | **V1.1** | 重试 + 超时 + 错误分类 + maxTokens + 并发    | ✅      |
 | **V1.2** | goal/background + expected_output + guardrail| ✅      |
 | **V2.0** | confirm + 流式事件 + fallback + delegates    | ✅      |
-| **V2.1** | 结构化日志 + OpenTelemetry + 可测试性        | 📋      |
-| **V2.2** | 上下文管理 + 成本控制 + MCP                  | 📋      |
+| **V2.1** | 契约审计 + 测试覆盖 + 文档对齐            | ✅      |
+| **V2.2** | 结构化输出 + 可测试性 + mock              | ✅      |
+| **V2.3** | 上下文管理 + 成本控制 + 流式 steps        | 📋      |
+| **V2.4** | 多模态 + MCP + 可观测                     | 📋      |
 
 ## 文档
 

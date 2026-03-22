@@ -107,13 +107,13 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 
 ## 未来演进方向
 
-### 1. 可观测性（V2.1 📋）
+### 1. 可观测性（V2.4 📋）
 
 - Tracing：每次决策链路追踪
 - Token 用量监控
 - OpenTelemetry 集成
 
-### 2. 上下文管理（V2.2 📋）
+### 2. 上下文管理（V2.3 📋）
 
 - Token 计数 + 自动截断/摘要（类型已预留 `contextWindow`）
 - 成本上限 `maxCostPerRun`
@@ -124,8 +124,8 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 - 工具权限分级
 - 敏感信息过滤
 
-### 4. 可测试性（V2.1 📋）
+### 4. 可测试性（V2.2 ✅）
 
-- 模型 Mock（`modelProvider` 已支持注入）
+- 模型 Mock（`modelProvider` + `mockModel()` 已实现）
 - 响应录制/回放
 - 中间步骤断言

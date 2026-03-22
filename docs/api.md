@@ -646,7 +646,7 @@ interface ConfigOptions {
   // === 预留扩展点 ===
 
   /**
-   * 可观测性配置（V2.1 计划）
+   * 可观测性配置（V2.4 计划）
    */
   telemetry?: {
     enabled?: boolean
@@ -669,7 +669,7 @@ interface ConfigOptions {
 export { agent } from "./agent"
 export { tool } from "./tool"
 export { configure } from "./core/config"
-export { registerProvider } from "./core/model"
+export { registerProvider, resetProviders } from "./core/model"
 export { compileRules } from "./rules"
 export { plugin, logger } from "./plugin"
 export { team } from "./team"

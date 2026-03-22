@@ -8,7 +8,10 @@
 import { tool } from "../tool.js"
 import * as fs from "fs"
 import * as path from "path"
-import { execSync } from "child_process"
+import { exec } from "child_process"
+import { promisify } from "util"
+
+const execPromise = promisify(exec)
 
 /** 读取文件内容 */
 export const readFile = tool({
@@ -56,23 +59,26 @@ export const listDir = tool({
   params: {
     dir: "目录路径",
     recursive: { type: "boolean", description: "是否递归列出子目录，默认 false", optional: true },
+    maxDepth: { type: "number", description: "递归最大深度，默认 10", optional: true },
   },
-  run: ({ dir, recursive }) => {
+  run: ({ dir, recursive, maxDepth }) => {
     try {
       if (recursive) {
+        const maxLevel = maxDepth ?? 10
         const results: string[] = []
-        function walk(d: string, indent: string) {
+        function walk(d: string, indent: string, depth: number) {
+          if (depth > maxLevel) return
           const entries = fs.readdirSync(d, { withFileTypes: true })
           for (const e of entries) {
             if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "dist") continue
             const icon = e.isDirectory() ? "📁" : "📄"
             results.push(`${indent}${icon} ${e.name}`)
             if (e.isDirectory()) {
-              walk(path.join(d, e.name), indent + "  ")
+              walk(path.join(d, e.name), indent + "  ", depth + 1)
             }
           }
         }
-        walk(dir, "")
+        walk(dir, "", 0)
         return results.join("\n")
       }
 
@@ -86,7 +92,7 @@ export const listDir = tool({
   },
 })
 
-/** 执行命令 */
+/** 执行命令（异步，不阻塞事件循环） */
 export const runCommand = tool({
   name: "runCommand",
   description: "在系统 shell 中执行命令并返回输出。注意：此工具具有系统级权限，请谨慎使用。",
@@ -94,15 +100,14 @@ export const runCommand = tool({
     command: "要执行的命令",
     cwd: { type: "string", description: "工作目录，默认为当前目录", optional: true },
   },
-  run: ({ command, cwd }) => {
+  run: async ({ command, cwd }) => {
     try {
-      const output = execSync(command, {
+      const { stdout, stderr } = await execPromise(command, {
         cwd: cwd ?? process.cwd(),
-        encoding: "utf-8",
         timeout: 30000,
         maxBuffer: 1024 * 1024,
       })
-      return output.trim() || "(命令执行成功，无输出)"
+      return (stdout.trim() || stderr.trim()) || "(命令执行成功，无输出)"
     } catch (err: any) {
       return `命令执行失败：${err.message}\n${err.stderr ?? ""}`
     }
@@ -117,9 +122,11 @@ export const search = tool({
     query: "搜索关键词",
     dir: { type: "string", description: "搜索目录，默认为当前目录", optional: true },
     ext: { type: "string", description: "文件扩展名过滤，如 .ts .js", optional: true },
+    maxDepth: { type: "number", description: "最大搜索深度，默认 10", optional: true },
   },
-  run: ({ query, dir, ext }) => {
+  run: ({ query, dir, ext, maxDepth }) => {
     const searchDir = dir ?? "."
+    const maxLevel = maxDepth ?? 10
     const results: string[] = []
 
     function searchFile(filePath: string) {
@@ -136,14 +143,15 @@ export const search = tool({
 
     const skipDirs = new Set(["node_modules", "dist", ".git", ".next", ".cache"])
 
-    function walk(d: string) {
+    function walk(d: string, depth: number) {
+      if (depth > maxLevel) return
       try {
         const entries = fs.readdirSync(d, { withFileTypes: true })
         for (const e of entries) {
           if (skipDirs.has(e.name)) continue
           const fullPath = path.join(d, e.name)
           if (e.isDirectory()) {
-            walk(fullPath)
+            walk(fullPath, depth + 1)
           } else {
             if (ext && !e.name.endsWith(ext)) continue
             searchFile(fullPath)
@@ -152,7 +160,7 @@ export const search = tool({
       } catch { /* skip inaccessible dirs */ }
     }
 
-    walk(searchDir)
+    walk(searchDir, 0)
     return results.length > 0
       ? results.slice(0, 50).join("\n") + (results.length > 50 ? `\n... 还有 ${results.length - 50} 条结果` : "")
       : `未找到包含 "${query}" 的内容`

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { registerProvider, resolveModel, detectDefaultModel, getProviderNames } from "../src/core/model.js"
+import { registerProvider, resolveModel, detectDefaultModel, getProviderNames, resetProviders } from "../src/core/model.js"
 
 describe("model 层", () => {
   // 保存原始环境变量
@@ -67,6 +67,38 @@ describe("model 层", () => {
       process.env.DEEPSEEK_API_KEY = "test-key"
       const model = detectDefaultModel()
       expect(model).toBe("deepseek/deepseek-chat")
+    })
+  })
+
+  describe("resetProviders()", () => {
+    afterEach(() => {
+      resetProviders()
+    })
+
+    it("应该移除自定义注册的 provider", () => {
+      registerProvider("test-custom", {
+        create: async (key) => (id: string) => ({ id }),
+        envKey: "TEST_CUSTOM_KEY",
+        defaultModel: "test-model",
+      })
+      expect(getProviderNames()).toContain("test-custom")
+
+      resetProviders()
+      expect(getProviderNames()).not.toContain("test-custom")
+    })
+
+    it("重置后内置 provider 应该保留", () => {
+      registerProvider("temp", {
+        create: async (key) => (id: string) => ({ id }),
+        envKey: "TEMP_KEY",
+        defaultModel: "temp-model",
+      })
+      resetProviders()
+
+      const names = getProviderNames()
+      expect(names).toContain("deepseek")
+      expect(names).toContain("openai")
+      expect(names).toContain("google")
     })
   })
 })

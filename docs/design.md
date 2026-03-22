@@ -439,13 +439,15 @@ dao/
 │   │   ├── types.ts       # 类型定义
 │   │   ├── loop.ts        # Agent Loop
 │   │   ├── config.ts      # 全局配置
-│   │   └── model.ts       # 模型解析
+│   │   ├── model.ts       # 模型解析
+│   │   └── errors.ts      # 错误分类（DaoError / ModelError / ToolError / TimeoutError）
 │   ├── agent.ts           # agent() 入口
 │   ├── tool.ts            # tool() + 简写参数转 JSON Schema
 │   ├── engine.ts          # Steps 引擎
 │   ├── rules.ts           # Rules 行为约束
 │   ├── plugin.ts          # 插件系统 + 内置 logger
 │   ├── team.ts            # team() 多 Agent 协作
+│   ├── mock.ts            # mockModel() 测试辅助
 │   ├── tools/             # 内置工具
 │   │   └── index.ts
 │   └── index.ts           # 导出入口

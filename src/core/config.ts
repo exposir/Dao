@@ -21,6 +21,12 @@ let globalConfig: ConfigOptions = {}
  * ```
  */
 export function configure(options: ConfigOptions): void {
+  if (options.defaultMaxTurns !== undefined && options.defaultMaxTurns <= 0) {
+    throw new Error("configure(): defaultMaxTurns 必须大于 0")
+  }
+  if (options.defaultModel !== undefined && options.defaultModel.trim() === "") {
+    throw new Error("configure(): defaultModel 不能为空字符串")
+  }
   globalConfig = { ...globalConfig, ...options }
 }
 

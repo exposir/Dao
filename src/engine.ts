@@ -213,7 +213,12 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
     } else {
       // 条件为 NO → 执行 else 分支（如有）并结束
       if (step.else) {
-        return await executeStep(step.else as Step, ctx, executeTask)
+        try {
+          return await executeStep(step.else as Step, ctx, executeTask)
+        } catch (err) {
+          if (err instanceof AbortError) throw err
+          return { error: (err as Error).message }
+        }
       }
       return lastResult
     }

@@ -8,7 +8,7 @@
 export { agent } from "./agent.js"
 export { tool } from "./tool.js"
 export { configure } from "./core/config.js"
-export { registerProvider } from "./core/model.js"
+export { registerProvider, resetProviders } from "./core/model.js"
 export { compileRules } from "./rules.js"
 export { AbortError } from "./engine.js"
 export { DaoError, ModelError, ToolError, TimeoutError } from "./core/errors.js"

@@ -43,7 +43,7 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
   }
 
   const model: any = {
-    specificationVersion: "v2",
+    specificationVersion: "v3",
     provider: "mock",
     modelId: "mock-model",
     defaultObjectGenerationMode: "json",
@@ -52,14 +52,14 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
     async doGenerate(params: any) {
       const text = nextResponse()
       return {
-        // AI SDK v2 要求 content 数组格式
+        // AI SDK v3 要求 content 数组格式
         content: [
           { type: "text", text },
         ],
         finishReason: "stop",
         usage: {
-          inputTokens: text.length,
-          outputTokens: text.length,
+          inputTokens: { total: text.length },
+          outputTokens: { total: text.length },
         },
         warnings: [],
         response: {
@@ -94,8 +94,8 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
             type: "finish",
             finishReason: "stop",
             usage: {
-              inputTokens: text.length,
-              outputTokens: text.length,
+              inputTokens: { total: text.length },
+              outputTokens: { total: text.length },
             },
           })
           controller.close()

@@ -30,6 +30,9 @@ import { agent } from "./agent.js"
  * })
  * const result = await squad.run("添加用户登录功能")
  * ```
+ *
+ * **注意：** 返回的 TeamInstance 不支持并发调用 `run()` / `runStream()`，
+ * 同一时间只能执行一个任务。并发调用会导致 memberResults 和流式事件互相污染。
  */
 export function team(options: TeamOptions): TeamInstance {
   const { members, lead, strategy = "auto", maxRounds, plugins } = options
@@ -72,7 +75,7 @@ export function team(options: TeamOptions): TeamInstance {
           const yieldCb = streamRef.yieldCb
           let fullOutput = ""
           let lastUsage = undefined
-          let duration = 0
+          const memberStart = Date.now()
           for await (const event of memberAgent.runStream(task)) {
              yieldCb({ ...event, member: memberName } as TeamRunEvent)
              if (event.type === "text") fullOutput += event.data
@@ -84,7 +87,7 @@ export function team(options: TeamOptions): TeamInstance {
              output: fullOutput,
              turns: [],
              usage: lastUsage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-             duration
+             duration: Date.now() - memberStart,
           }
           memberResults[memberName].push(res)
           return fullOutput

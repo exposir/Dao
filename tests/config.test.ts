@@ -44,4 +44,14 @@ describe("configure()", () => {
     const config = getGlobalConfig()
     expect(Object.keys(config)).toHaveLength(0)
   })
+
+  it("defaultMaxTurns <= 0 应该抛错", () => {
+    expect(() => configure({ defaultMaxTurns: 0 })).toThrow("defaultMaxTurns 必须大于 0")
+    expect(() => configure({ defaultMaxTurns: -5 })).toThrow("defaultMaxTurns 必须大于 0")
+  })
+
+  it("空字符串 defaultModel 应该抛错", () => {
+    expect(() => configure({ defaultModel: "" })).toThrow("defaultModel 不能为空字符串")
+    expect(() => configure({ defaultModel: "   " })).toThrow("defaultModel 不能为空字符串")
+  })
 })

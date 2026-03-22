@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.2.2 (2026-03-23)
+
+### Bug Fixes
+
+- **loop**: `ctx.abort()` 抛出的 `AbortError` 被误判为超时（与 `AbortController.abort()` 的 `AbortError` name 冲突），三个函数都增加 `instanceof AbortError` 优先穿透
+- **loop**: usage 提取逻辑重复 6 处且主路径/fallback 路径格式不一致，封装 `extractUsage()` 统一兼容 v2/v3 格式
+- **loop**: `runGenerate` 的 `startTime` 在 `beforeModelCall` hook 之后赋值，导致 duration 偏小
+- **agent**: `chatStream()` 的 catch 缺少 `AbortError` 过滤，`ctx.abort()` 错误触发 `onError` 插件
+- **agent**: `chat()` 和 `generate()` 的 catch 同样缺少 `AbortError` 过滤
+- **plugin**: `PluginManager.emit()` 和 `logger()` 大量 `as any` 强转，改用 `HookContext` 索引签名消除
+- **mock**: 注释仍写 "AI SDK v2"，实际已升级 v3
+- **team**: JSDoc `*` 缩进不一致
+- **tools**: `listDir` 递归模式无深度限制，新增 `maxDepth` 参数（默认 10）
+
+### Types
+
+- **types**: `HookContext` 增加 `[key: string]: any` 索引签名，允许 hook 额外字段类型安全传递
+
+### Tests
+
+- 新增 `abort.test.ts`：`ctx.abort()` 行为 + `AbortError` 属性验证（2 tests）
+- 新增 `tools.test.ts`：`listDir` maxDepth / `search` maxDepth + ext / `runCommand` async + cwd + error / `readFile` error（7 tests）
+- `config.test.ts`：`configure()` 输入校验（+2 tests）
+- `model.test.ts`：`resetProviders()` 移除自定义 + 保留内置（+2 tests）
+- 总测试数从 75 增至 88
+
+### Docs
+
+- **api.md**: `telemetry` 计划版本从 V2.1 更正为 V2.4
+- **api.md**: 导出总览补充 `resetProviders`
+- **README**: 路线图与 `docs/roadmap.md` 对齐（V2.1 契约审计、V2.2 结构化输出）
+- **design.md**: 项目结构补充 `mock.ts` 和 `core/errors.ts`
+- **.gitignore**: `.env.*` 排除规则增加 `!.env.example` 例外
+
 ## 2.2.1 (2026-03-22)
 
 ### Bug Fixes

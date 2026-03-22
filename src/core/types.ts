@@ -366,6 +366,8 @@ export interface HookContext {
    * 所有 hook 都可调用，但仅在 beforeToolCall / beforeModelCall 中生效
    */
   skip: () => void
+  /** 允许 hook 传入额外字段（message / response / error 等） */
+  [key: string]: any
 }
 
 /** plugin() 返回的插件实例 */
@@ -394,12 +396,12 @@ export interface ConfigOptions {
 
   /** 全局插件 */
   globalPlugins?: PluginInstance[]
-  /** 可观测性配置 @planned V2.1 */
+  /** 可观测性配置 @planned V2.4 */
   telemetry?: {
     enabled?: boolean
     exporter?: (event: any) => void
   }
-  /** 成本上限 @planned V2.2 */
+  /** 成本上限 @planned V2.3 */
   maxCostPerRun?: number
 }
 

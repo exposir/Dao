@@ -113,6 +113,7 @@ export function agent(options: AgentOptions): AgentInstance {
         await pm.emit("onComplete", instance, { result })
         return result.output
       } catch (err: any) {
+        if (err?.name === "AbortError") throw err
         await pm.emit("onError", instance, { error: err })
         throw err
       }
@@ -188,6 +189,8 @@ export function agent(options: AgentOptions): AgentInstance {
         await pm.emit("onComplete", instance, { result })
         return result
       } catch (err: any) {
+        // AbortError 是用户主动中止，不触发 onError
+        if (err?.name === "AbortError") throw err
         await pm.emit("onError", instance, { error: err })
         throw err
       }
@@ -220,6 +223,7 @@ export function agent(options: AgentOptions): AgentInstance {
 
         await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: streamUsage } })
       } catch (err: any) {
+        if (err?.name === "AbortError") throw err
         await pm.emit("onError", instance, { error: err })
         throw err
       }
@@ -306,6 +310,7 @@ export function agent(options: AgentOptions): AgentInstance {
         }
         await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: streamUsage } })
       } catch (err: any) {
+        if (err?.name === "AbortError") throw err
         await pm.emit("onError", instance, { error: err })
         throw err
       }
@@ -320,6 +325,7 @@ export function agent(options: AgentOptions): AgentInstance {
         await pm.emit("onComplete", instance, { result: { output: JSON.stringify(result.object), turns: [], usage: result.usage, duration: result.duration } })
         return result
       } catch (err: any) {
+        if (err?.name === "AbortError") throw err
         await pm.emit("onError", instance, { error: err })
         throw err
       }

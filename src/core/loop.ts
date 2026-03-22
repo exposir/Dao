@@ -26,7 +26,24 @@ import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
 import { compileRules } from "../rules.js"
 import { ModelError, ToolError, TimeoutError } from "./errors.js"
+import { AbortError } from "../engine.js"
 import type { PluginManager } from "../plugin.js"
+
+/**
+ * 从 AI SDK 返回的 usage 中提取标准化的 TokenUsage
+ * 兼容 v2（平铺数字）和 v3（嵌套 { total }）两种格式
+ */
+function extractUsage(raw: any): TokenUsage {
+  if (!raw) return { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+  // v3 嵌套格式: { inputTokens: { total: N }, outputTokens: { total: N } }
+  const input = typeof raw.inputTokens === "object"
+    ? raw.inputTokens?.total ?? 0
+    : raw.inputTokens ?? raw.promptTokens ?? 0
+  const output = typeof raw.outputTokens === "object"
+    ? raw.outputTokens?.total ?? 0
+    : raw.outputTokens ?? raw.completionTokens ?? 0
+  return { promptTokens: input, completionTokens: output, totalTokens: input + output }
+}
 
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
 function toAITools(
@@ -69,7 +86,7 @@ function toAITools(
         try {
           const ctx: ToolContext = {
             agent: agentInstance,
-            abort: () => { throw new Error("工具中止执行") },
+            abort: (reason?: string) => { throw new AbortError(reason ?? "工具中止执行") },
           }
           const output = await t.execute(params, ctx)
           const toolResult = typeof output === "string" ? output : JSON.stringify(output)
@@ -82,6 +99,9 @@ function toAITools(
           onToolCall?.(t.name, params, toolResult)
           return toolResult
         } catch (err: any) {
+          // AbortError 由用户显式调用 ctx.abort()，应穿透到上层中止 Agent 循环
+          if (err instanceof AbortError) throw err
+
           const toolErr = err instanceof ToolError
             ? err
             : new ToolError(`工具 "${t.name}" 执行失败：${err.message}`, t.name, err)
@@ -201,26 +221,15 @@ export async function runLoop(
 
     if (timeoutId) clearTimeout(timeoutId)
 
+    const usage = extractUsage(result.totalUsage)
+
     // 触发 afterModelCall hook
     if (pm) {
       await pm.emit("afterModelCall", agentInstance, {
-        response: {
-          text: result.text,
-          usage: {
-            promptTokens: result.totalUsage?.inputTokens ?? 0,
-            completionTokens: result.totalUsage?.outputTokens ?? 0,
-            totalTokens: (result.totalUsage?.inputTokens ?? 0) + (result.totalUsage?.outputTokens ?? 0),
-          },
-        },
+        response: { text: result.text, usage },
       })
     }
 
-    // 提取 token 用量
-    const usage: TokenUsage = {
-      promptTokens: result.totalUsage?.inputTokens ?? 0,
-      completionTokens: result.totalUsage?.outputTokens ?? 0,
-      totalTokens: (result.totalUsage?.inputTokens ?? 0) + (result.totalUsage?.outputTokens ?? 0),
-    }
 
     // 收集轮次记录
     const turnResults = result.steps?.map((step, i) => ({
@@ -236,6 +245,9 @@ export async function runLoop(
     }
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)
+
+    // ctx.abort() 抛出的 AbortError 需要优先穿透，不走超时/fallback 逻辑
+    if (err instanceof AbortError) throw err
 
     const isTimeout = controller?.signal?.aborted || err?.name === "AbortError"
 
@@ -266,18 +278,12 @@ export async function runLoop(
 
         if (fbTimeoutId) clearTimeout(fbTimeoutId)
 
-        const fallbackUsage = {
-          promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
-          completionTokens: fallbackResult.totalUsage?.outputTokens ?? 0,
-          totalTokens: (fallbackResult.totalUsage?.inputTokens ?? 0) + (fallbackResult.totalUsage?.outputTokens ?? 0),
-        }
+        const fallbackUsage = extractUsage(fallbackResult.totalUsage)
         if (pm) {
           await pm.emit("afterModelCall", agentInstance, {
             response: { text: fallbackResult.text, usage: fallbackUsage },
           })
         }
-
-        const usage: TokenUsage = fallbackUsage
 
         const turnResults = fallbackResult.steps?.map((step, i) => ({
           turn: `fallback-turn-${i + 1}`,
@@ -287,7 +293,7 @@ export async function runLoop(
         return {
           output: fallbackResult.text,
           turns: turnResults,
-          usage,
+          usage: fallbackUsage,
           duration: Date.now() - startTime,
         }
       } catch {
@@ -364,7 +370,7 @@ export async function* runLoopStream(
     }
   }
 
-  let hasYieldedTexto = false
+  let hasYieldedText = false
 
   try {
     const result = streamText({
@@ -381,7 +387,7 @@ export async function* runLoopStream(
 
     let fullText = ""
     for await (const part of result.textStream) {
-      if (part) hasYieldedTexto = true
+      if (part) hasYieldedText = true
       // 先发累积的 tool_call 事件
       while (toolCallEvents.length > 0) {
         yield toolCallEvents.shift()!
@@ -399,11 +405,7 @@ export async function* runLoopStream(
 
     // 获取真实用量
     const totalUsage = await result.totalUsage
-    const usage = {
-      promptTokens: totalUsage?.inputTokens ?? 0,
-      completionTokens: totalUsage?.outputTokens ?? 0,
-      totalTokens: (totalUsage?.inputTokens ?? 0) + (totalUsage?.outputTokens ?? 0),
-    }
+    const usage = extractUsage(totalUsage)
 
     // 触发 afterModelCall hook（传真实输出和用量）
     if (pm) {
@@ -417,9 +419,11 @@ export async function* runLoopStream(
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)
 
+    if (err instanceof AbortError) throw err
+
     if (controller?.signal?.aborted || err?.name === "AbortError") {
       // 超时：如果有 fallback 且没有已执行的工具，走 fallback
-      if (options.fallbackModel && !hasYieldedTexto && !hasExecutedTools) {
+      if (options.fallbackModel && !hasYieldedText && !hasExecutedTools) {
         try {
           const fallbackOptions = {
             ...options,
@@ -442,7 +446,7 @@ export async function* runLoopStream(
     }
 
     // 非超时错误：有 fallback 且无已执行工具时走 fallback
-    if (options.fallbackModel && !hasYieldedTexto && !hasExecutedTools) {
+    if (options.fallbackModel && !hasYieldedText && !hasExecutedTools) {
       try {
         const fallbackOptions = {
           ...options,
@@ -487,6 +491,7 @@ export async function runGenerate<T = any>(
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
   const systemPrompt = buildSystemPrompt(options)
+  const startTime = Date.now()
 
   // 超时控制
   let controller: AbortController | undefined
@@ -504,8 +509,6 @@ export async function runGenerate<T = any>(
       return { object: {} as T, usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
     }
   }
-
-  const startTime = Date.now()
 
   let resolvedSchema = generateOptions.schema
   if (resolvedSchema && typeof resolvedSchema === "object" && typeof resolvedSchema.parse !== "function" && !resolvedSchema.jsonSchema) {
@@ -531,11 +534,7 @@ export async function runGenerate<T = any>(
 
     if (timeoutId) clearTimeout(timeoutId)
 
-    const usage: TokenUsage = {
-      promptTokens: result.usage?.inputTokens ?? 0,
-      completionTokens: result.usage?.outputTokens ?? 0,
-      totalTokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
-    }
+    const usage = extractUsage(result.usage)
 
     // 触发 afterModelCall hook
     if (pm) {
@@ -551,6 +550,8 @@ export async function runGenerate<T = any>(
     }
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)
+
+    if (err instanceof AbortError) throw err
 
     const isTimeout = controller?.signal?.aborted || err?.name === "AbortError"
 
@@ -581,11 +582,7 @@ export async function runGenerate<T = any>(
         
         if (fbTimeoutId) clearTimeout(fbTimeoutId)
 
-        const fallbackUsage: TokenUsage = {
-          promptTokens: (fallbackResult.usage as any)?.promptTokens ?? (fallbackResult.usage as any)?.inputTokens ?? 0,
-          completionTokens: (fallbackResult.usage as any)?.completionTokens ?? (fallbackResult.usage as any)?.outputTokens ?? 0,
-          totalTokens: ((fallbackResult.usage as any)?.promptTokens ?? (fallbackResult.usage as any)?.inputTokens ?? 0) + ((fallbackResult.usage as any)?.completionTokens ?? (fallbackResult.usage as any)?.outputTokens ?? 0),
-        }
+        const fallbackUsage = extractUsage(fallbackResult.usage)
 
         // Fix 6: fallback 成功后也触发 afterModelCall hook
         if (pm) {
