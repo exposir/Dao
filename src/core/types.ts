@@ -109,7 +109,7 @@ export interface ConditionalStep {
   if: string | ((ctx: StepContext) => boolean | Promise<boolean>)
   then: string | Step
   else?: string | Step
-  /** 可选：失败时重试次数 */
+  /** 可选：条件仍满足时的最大重复评估次数（条件变为 NO 时提前结束） */
   retry?: number
 }
 

@@ -237,18 +237,17 @@ export async function runLoop(
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)
 
-    // 超时检测
-    if (controller?.signal?.aborted || err?.name === "AbortError") {
-      throw new TimeoutError(
-        `模型调用超时（${options.timeout}ms）`,
-        options.timeout!,
-      )
-    }
+    const isTimeout = controller?.signal?.aborted || err?.name === "AbortError"
 
-    // 包装为 ModelError
+    // 有 fallbackModel 时，超时和普通错误都走 fallback
     if (options.fallbackModel) {
-      // Fallback：用备用模型重试一次
+      // 给 fallback 独立的超时控制
+      const fbController = options.timeout ? new AbortController() : undefined
+      const fbTimeoutId = options.timeout
+        ? setTimeout(() => fbController!.abort(), options.timeout)
+        : undefined
       try {
+
         const fallbackModel = await resolveModel(options.fallbackModel)
         const fallbackResult = await generateText({
           model: fallbackModel,
@@ -258,14 +257,14 @@ export async function runLoop(
           temperature: options.temperature,
           maxOutputTokens: options.maxTokens,
           maxRetries: options.retry?.maxRetries ?? 2,
-          abortSignal: controller?.signal,
+          abortSignal: fbController?.signal,
           stopWhen: stepCountIs(maxTurns),
           providerOptions: {
             openai: { strictJsonSchema: false },
           },
         })
 
-        if (timeoutId) clearTimeout(timeoutId)
+        if (fbTimeoutId) clearTimeout(fbTimeoutId)
 
         const fallbackUsage = {
           promptTokens: fallbackResult.totalUsage?.inputTokens ?? 0,
@@ -292,8 +291,17 @@ export async function runLoop(
           duration: Date.now() - startTime,
         }
       } catch {
-        // fallback 也失败，抛原始错误
+        // fallback 也失败，走下方错误抛出
+      } finally {
+        if (fbTimeoutId) clearTimeout(fbTimeoutId)
       }
+    }
+
+    if (isTimeout) {
+      throw new TimeoutError(
+        `模型调用超时（${options.timeout}ms）`,
+        options.timeout!,
+      )
     }
 
     throw new ModelError(
@@ -326,7 +334,9 @@ export async function* runLoopStream(
 
   // tool_call 事件收集器
   const toolCallEvents: RunEvent[] = []
+  let hasExecutedTools = false  // 独立标志，不受 shift() 清空影响
   const onToolCall = (name: string, params: any, result: any) => {
+    hasExecutedTools = true
     toolCallEvents.push({ type: "tool_call", data: { tool: name, params, result } })
   }
   const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, onToolCall) : undefined
@@ -408,15 +418,38 @@ export async function* runLoopStream(
     if (timeoutId) clearTimeout(timeoutId)
 
     if (controller?.signal?.aborted || err?.name === "AbortError") {
+      // 超时：如果有 fallback 且没有已执行的工具，走 fallback
+      if (options.fallbackModel && !hasYieldedTexto && !hasExecutedTools) {
+        try {
+          const fallbackOptions = {
+            ...options,
+            model: options.fallbackModel,
+            modelProvider: undefined,
+            fallbackModel: undefined,
+            timeout: options.timeout,
+          }
+          const childGen = runLoopStream(fallbackOptions, task, messageHistory, agentInstance, pm)
+          yield* childGen
+          return
+        } catch {
+          // fallback 也失败，抛超时错误
+        }
+      }
       throw new TimeoutError(
         `流式调用超时（${options.timeout}ms）`,
         options.timeout!,
       )
     }
 
-    if (options.fallbackModel && !hasYieldedTexto) {
+    // 非超时错误：有 fallback 且无已执行工具时走 fallback
+    if (options.fallbackModel && !hasYieldedTexto && !hasExecutedTools) {
       try {
-        const fallbackOptions = { ...options, fallbackModel: undefined }
+        const fallbackOptions = {
+          ...options,
+          model: options.fallbackModel,
+          modelProvider: undefined,
+          fallbackModel: undefined,
+        }
         const childGen = runLoopStream(fallbackOptions, task, messageHistory, agentInstance, pm)
         yield* childGen
         return
@@ -519,15 +552,17 @@ export async function runGenerate<T = any>(
   } catch (err: any) {
     if (timeoutId) clearTimeout(timeoutId)
 
-    if (controller?.signal?.aborted || err?.name === "AbortError") {
-      throw new TimeoutError(
-        `结构化输出超时（${options.timeout}ms）`,
-        options.timeout!,
-      )
-    }
+    const isTimeout = controller?.signal?.aborted || err?.name === "AbortError"
 
+    // 有 fallbackModel 时，超时和普通错误都走 fallback
     if (options.fallbackModel) {
+      // 给 fallback 独立的超时控制
+      const fbController = options.timeout ? new AbortController() : undefined
+      const fbTimeoutId = options.timeout
+        ? setTimeout(() => fbController!.abort(), options.timeout)
+        : undefined
       try {
+
         const fallbackModel = await resolveModel(options.fallbackModel)
         const fallbackOptionsAny: any = {
           model: fallbackModel,
@@ -536,19 +571,27 @@ export async function runGenerate<T = any>(
           schema: resolvedSchema,
           schemaName: generateOptions.schemaName ?? "result",
           schemaDescription: generateOptions.schemaDescription,
+          mode: "json", // Fix 5: 与主路径保持一致
           temperature: options.temperature,
           maxOutputTokens: options.maxTokens,
           maxRetries: options.retry?.maxRetries ?? 2,
-          abortSignal: controller?.signal,
+          abortSignal: fbController?.signal,
         }
         const fallbackResult = await generateObject(fallbackOptionsAny)
         
-        if (timeoutId) clearTimeout(timeoutId)
+        if (fbTimeoutId) clearTimeout(fbTimeoutId)
 
         const fallbackUsage: TokenUsage = {
           promptTokens: (fallbackResult.usage as any)?.promptTokens ?? (fallbackResult.usage as any)?.inputTokens ?? 0,
           completionTokens: (fallbackResult.usage as any)?.completionTokens ?? (fallbackResult.usage as any)?.outputTokens ?? 0,
           totalTokens: ((fallbackResult.usage as any)?.promptTokens ?? (fallbackResult.usage as any)?.inputTokens ?? 0) + ((fallbackResult.usage as any)?.completionTokens ?? (fallbackResult.usage as any)?.outputTokens ?? 0),
+        }
+
+        // Fix 6: fallback 成功后也触发 afterModelCall hook
+        if (pm) {
+          await pm.emit("afterModelCall", agentInstance, {
+            response: { text: JSON.stringify(fallbackResult.object), usage: fallbackUsage },
+          })
         }
 
         return {
@@ -557,11 +600,18 @@ export async function runGenerate<T = any>(
           duration: Date.now() - startTime,
         }
       } catch (fbErr: any) {
-        throw new ModelError(
-          `结构化输出在备用模型上也失败：${fbErr.message}`,
-          fbErr,
-        )
+        if (fbTimeoutId) clearTimeout(fbTimeoutId)
+        throw isTimeout
+          ? new TimeoutError(`结构化输出超时（${options.timeout}ms）`, options.timeout!)
+          : new ModelError(`结构化输出在备用模型上也失败：${fbErr.message}`, fbErr)
       }
+    }
+
+    if (isTimeout) {
+      throw new TimeoutError(
+        `结构化输出超时（${options.timeout}ms）`,
+        options.timeout!,
+      )
     }
 
     throw new ModelError(

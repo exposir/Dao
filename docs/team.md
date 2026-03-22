@@ -165,7 +165,8 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
     })
   }
 
-  // 3. 执行 lead
+  // 3. 执行前重置 memberResults（防跨 run 累积）
+  for (const name of Object.keys(memberResults)) memberResults[name] = []
   const result = await leadAgent.run(task)
 
   // 聚合 lead + 所有 member 的 token 用量
@@ -178,9 +179,9 @@ async function teamRun(options: TeamOptions, task: string): Promise<TeamRunResul
 
   return {
     output: result.output,
-    memberResults,
+    memberResults: JSON.parse(JSON.stringify(memberResults)), // 深拷贝防外部污染
     usage: totalUsage,
-    duration: result.duration,
+    duration: Date.now() - startTime,
   }
 }
 ```

@@ -667,22 +667,26 @@ interface ConfigOptions {
 ```typescript
 // dao-ai 主入口
 export { agent } from "./agent"
-export { team } from "./team"
 export { tool } from "./tool"
-export { plugin, logger } from "./plugin"
-export { configure } from "./config"
-export { registerProvider } from "./model"
+export { configure } from "./core/config"
+export { registerProvider } from "./core/model"
 export { compileRules } from "./rules"
+export { plugin, logger } from "./plugin"
+export { team } from "./team"
 export { mockModel } from "./mock"
-export { AbortError, TimeoutError, ModelError } from "./engine"
+export { AbortError } from "./engine"
+export { DaoError, ModelError, ToolError, TimeoutError } from "./core/errors"
 
-// registerProvider 类型
-function registerProvider(name: string, entry: ProviderEntry): void
-interface ProviderEntry {
-  create: (apiKey: string) => Promise<any>  // 异步，动态 import provider
-  envKey: string
-  defaultModel: string
-}
+// 类型导出
+export type {
+  AgentOptions, AgentInstance, RunResult, RunEvent, TokenUsage,
+  GenerateOptions, GenerateResult,
+  ToolOptions, ToolInstance, ToolContext, ParamsDef, ParamSpec, JSONSchema,
+  Step, TaskStep, WaitStep, StepContext, ParallelStep, ConditionalStep,
+  TeamOptions, TeamInstance, TeamRunResult, TeamRunEvent,
+  PluginOptions, PluginInstance, PluginHooks, HookContext,
+  ConfigOptions, ProviderEntry,
+} from "./core/types"
 
 // dao-ai/tools 内置工具
 export { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"

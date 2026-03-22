@@ -195,6 +195,9 @@ export function team(options: TeamOptions): TeamInstance {
       } finally {
         streamRef.yieldCb = null
       }
+
+      // 确保 lead 的错误被正确传播
+      await leadPromise
     },
 
     getMembers(): Record<string, AgentInstance> {

@@ -90,7 +90,7 @@ const bot = agent({
 ```typescript
 const bot = agent({
   model: "deepseek/deepseek-chat",
-  fallbackModel: "openai/gpt-4o",     // 主模型失败自动切换
+  fallbackModel: "openai/gpt-4o",     // 主模型出错或超时，自动切换备用模型
   retry: { maxRetries: 3 },           // 自动重试 + 指数退避
   timeout: 30000,                     // 30 秒超时
   maxTokens: 2000,                    // 限制输出长度

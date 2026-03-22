@@ -171,26 +171,28 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     let condition: boolean
 
-    try {
-      if (typeof step.if === "string") {
-        // 字符串条件 → 让 Agent 判断（只调用底层单轮查询，不落入 memory）
+    if (typeof step.if === "string") {
+      // 字符串条件 → 让 Agent 判断，注入上下文让 LLM 能感知当前状态
+      try {
+        const contextInfo = ctx.lastResult != null
+          ? `\n当前上下文（上一步执行结果）：\n${typeof ctx.lastResult === "string" ? ctx.lastResult : JSON.stringify(ctx.lastResult)}\n\n`
+          : ""
         const answerResult = await executeTask(
-          `请判断以下条件是否成立，并联系上文只回答"YES"或"NO"：${step.if}`
+          `${contextInfo}请判断以下条件是否成立，只回答"YES"或"NO"：${step.if}`
         )
         const answer = answerResult.output
         const normalized = answer.trim().toUpperCase()
-        // 先检查否定，再检查肯定
         const isNo = /\b(NO|FALSE)\b/.test(normalized) || /^(否|不是|没有|不)/.test(answer.trim())
         const isYes = /\b(YES|TRUE)\b/.test(normalized) || /^(是|有|对)/.test(answer.trim())
         condition = isYes && !isNo
-      } else {
-        // 函数条件 → 直接执行
-        condition = await step.if(ctx)
+      } catch (err) {
+        if (err instanceof AbortError) throw err
+        // 字符串条件（LLM 判断）异常时兜底 false
+        condition = false
       }
-    } catch (err) {
-      if (err instanceof AbortError) throw err
-      // 条件评估失败，视为 false
-      condition = false
+    } else {
+      // 函数条件 → 直接执行，异常直接上抛
+      condition = await step.if(ctx)
     }
 
     if (condition) {
@@ -202,8 +204,11 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
           if (err instanceof AbortError) throw err
           lastResult = { error: (err as Error).message }
         }
+        // 回写 ctx，让后续循环的条件评估能感知最新状态
+        ctx.lastResult = lastResult
+        ctx.history.push({ step: step.then as Step, result: lastResult })
       }
-      // 如果还有重试次数，继续循环重新评估条件
+      // 继续循环重新评估条件
       continue
     } else {
       // 条件为 NO → 执行 else 分支（如有）并结束
