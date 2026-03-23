@@ -79,4 +79,74 @@ describe("mockModel()", () => {
     expect(result.usage.totalTokens).toBeGreaterThan(0)
     expect(result.duration).toBeGreaterThanOrEqual(0)
   })
+
+  it("应该支持嵌套对象 schema", async () => {
+    const bot = agent({
+      modelProvider: mockModel([`{"user":{"name":"Bob","address":{"city":"北京"}}}`]),
+    })
+
+    const result = await bot.generate("生成嵌套用户", {
+      schema: {
+        type: "object",
+        properties: {
+          user: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              address: {
+                type: "object",
+                properties: { city: { type: "string" } },
+              },
+            },
+          },
+        },
+      }
+    })
+
+    expect(result.object.user.name).toBe("Bob")
+    expect(result.object.user.address.city).toBe("北京")
+  })
+
+  it("应该支持数组 schema", async () => {
+    const bot = agent({
+      modelProvider: mockModel([`{"items":[{"id":1},{"id":2},{"id":3}]}`]),
+    })
+
+    const result = await bot.generate("生成列表", {
+      schema: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "number" } } },
+          },
+        },
+      }
+    })
+
+    expect(result.object.items).toHaveLength(3)
+    expect(result.object.items[0].id).toBe(1)
+    expect(result.object.items[2].id).toBe(3)
+  })
+
+  it("generate() 不应使用 memory", async () => {
+    const bot = agent({
+      modelProvider: mockModel([
+        `{"x":1}`,
+        `{"x":2}`,
+      ]),
+      memory: true,
+    })
+
+    await bot.generate("第一次", {
+      schema: { type: "object", properties: { x: { type: "number" } } }
+    })
+
+    // generate 是无状态的，不应影响后续 chat
+    // 第二次 generate 仍应正常工作
+    const r2 = await bot.generate("第二次", {
+      schema: { type: "object", properties: { x: { type: "number" } } }
+    })
+    expect(r2.object.x).toBe(2)
+  })
 })

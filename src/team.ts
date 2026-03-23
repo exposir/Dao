@@ -14,6 +14,23 @@ import type {
   RunResult,
 } from "./core/types.js"
 import { tool } from "./tool.js"
+
+/** 安全深拷贝，防止 BigInt / 循环引用导致 JSON.parse(JSON.stringify(...)) 崩溃 */
+function safeDeepCopy<T>(value: T): T {
+  try {
+    return structuredClone(value)
+  } catch {
+    // structuredClone 也失败时（如含函数引用），退化为浅层数组拷贝
+    if (value && typeof value === "object") {
+      const copy: any = {}
+      for (const [k, v] of Object.entries(value)) {
+        copy[k] = Array.isArray(v) ? [...v] : v
+      }
+      return copy as T
+    }
+    return value
+  }
+}
 import { agent } from "./agent.js"
 
 /**

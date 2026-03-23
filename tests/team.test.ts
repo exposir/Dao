@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { team } from "../src/team.js"
 import { agent } from "../src/agent.js"
-import type { AgentInstance } from "../src/core/types.js"
+import type { AgentInstance, TeamRunEvent } from "../src/core/types.js"
 
 // mock agent
 function mockMember(role: string): AgentInstance {
@@ -102,4 +102,94 @@ describe("team.run() 行为", () => {
     expect(typeof result.output).toBe("string")
     expect(result.duration).toBeGreaterThanOrEqual(0)
   })
+
+  it("memberResults 应该是独立深拷贝", async () => {
+    const { mockModel } = await import("../src/mock.js")
+
+    const worker = agent({
+      role: "工人",
+      modelProvider: mockModel(["完成"], { loop: true }),
+    })
+
+    const t = team({
+      lead: agent({
+        role: "负责人",
+        modelProvider: mockModel(["分析完成"], { loop: true }),
+      }),
+      members: { worker },
+    })
+
+    const r1 = await t.run("任务1")
+    const r2 = await t.run("任务2")
+
+    // 两次调用返回的 memberResults 应该是独立对象
+    expect(r1.memberResults).not.toBe(r2.memberResults)
+    // 修改 r1 不应影响 r2
+    r1.memberResults.worker = []
+    expect(r2.memberResults).toHaveProperty("worker")
+  })
+
+  it("runStream() 应该至少发出 text 和 done 事件", async () => {
+    const { mockModel } = await import("../src/mock.js")
+
+    const worker = agent({
+      role: "工人",
+      modelProvider: mockModel(["做完了"]),
+    })
+
+    const t = team({
+      lead: agent({
+        role: "负责人",
+        modelProvider: mockModel(["分析好了"]),
+      }),
+      members: { worker },
+    })
+
+    const events: TeamRunEvent[] = []
+    for await (const event of t.runStream("测试流式")) {
+      events.push(event)
+    }
+
+    // 应该至少有 text 和 done 事件
+    const types = events.map(e => e.type)
+    expect(types).toContain("text")
+    expect(types).toContain("done")
+
+    // done 事件应该包含 usage
+    const doneEvent = events.find(e => e.type === "done")
+    expect(doneEvent?.data).toHaveProperty("usage")
+  })
+
+  it("无 lead 时应自动创建负责人", async () => {
+    const { mockModel } = await import("../src/mock.js")
+    const { registerProvider, resetProviders } = await import("../src/core/model.js")
+
+    // 注册 mock provider 让 auto-lead 能解析 model 字符串
+    process.env.MOCK_LEAD_KEY = "test"
+    registerProvider("mockleadprovider", {
+      create: async () => (_id: string) => mockModel(["负责人自动完成"], { loop: true }),
+      envKey: "MOCK_LEAD_KEY",
+      defaultModel: "default",
+    })
+
+    try {
+      const worker = agent({
+        role: "工人",
+        model: "mockleadprovider/default",
+        modelProvider: mockModel(["做完了"]),
+      })
+
+      // 不传 lead，auto-lead 会从 member 取 model 字符串
+      const t = team({
+        members: { worker },
+      })
+
+      const result = await t.run("自动负责人测试")
+      expect(result).toHaveProperty("output")
+    } finally {
+      resetProviders()
+      delete process.env.MOCK_LEAD_KEY
+    }
+  })
 })
+

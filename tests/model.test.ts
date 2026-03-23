@@ -100,5 +100,23 @@ describe("model 层", () => {
       expect(names).toContain("openai")
       expect(names).toContain("google")
     })
+
+    it("覆盖内置 provider 后 resetProviders() 应恢复原实现", async () => {
+      // 覆盖内置的 openai provider
+      registerProvider("openai", {
+        create: async () => (_id: string) => ({ fake: true }),
+        envKey: "FAKE_OPENAI_KEY",
+        defaultModel: "fake-model",
+      })
+
+      // 此时 resolveModel("openai/xxx") 会读 FAKE_OPENAI_KEY
+      resetProviders()
+
+      // 恢复后应该回到初始的 OPENAI_API_KEY
+      // 通过 resolveModel 验证：无 OPENAI_API_KEY 时应报环境变量缺失
+      await expect(
+        resolveModel("openai/gpt-4o")
+      ).rejects.toThrow("OPENAI_API_KEY")
+    })
   })
 })

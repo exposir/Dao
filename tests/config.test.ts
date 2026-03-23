@@ -54,4 +54,26 @@ describe("configure()", () => {
     expect(() => configure({ defaultModel: "" })).toThrow("defaultModel 不能为空字符串")
     expect(() => configure({ defaultModel: "   " })).toThrow("defaultModel 不能为空字符串")
   })
+
+  it("getGlobalConfig() 返回的 globalPlugins 应与内部隔离", () => {
+    const fakePlugin = { name: "p1", hooks: {} } as any
+    configure({ globalPlugins: [fakePlugin] })
+
+    const copy = getGlobalConfig()
+    copy.globalPlugins!.push({ name: "injected", hooks: {} } as any)
+
+    // 内部不应被污染
+    expect(getGlobalConfig().globalPlugins).toHaveLength(1)
+    expect(getGlobalConfig().globalPlugins![0].name).toBe("p1")
+  })
+
+  it("getGlobalConfig() 返回的 telemetry 应与内部隔离", () => {
+    configure({ telemetry: { enabled: true } } as any)
+
+    const copy = getGlobalConfig()
+    ;(copy as any).telemetry.enabled = false
+
+    // 内部不应被污染
+    expect((getGlobalConfig() as any).telemetry.enabled).toBe(true)
+  })
 })

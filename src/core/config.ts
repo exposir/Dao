@@ -33,8 +33,9 @@ export function configure(options: ConfigOptions): void {
 /** 获取当前全局配置（返回副本，防止外部直接修改内部状态） */
 export function getGlobalConfig(): ConfigOptions {
   const copy = { ...globalConfig }
-  // 隔离嵌套数组引用
+  // 隔离嵌套引用
   if (copy.globalPlugins) copy.globalPlugins = [...copy.globalPlugins]
+  if (copy.telemetry) copy.telemetry = { ...copy.telemetry }
   return copy
 }
 

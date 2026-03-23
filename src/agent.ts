@@ -12,6 +12,15 @@ import { PluginManager } from "./plugin.js"
 import { tool } from "./tool.js"
 import { getGlobalConfig } from "./core/config.js"
 
+/** 安全序列化，防止 BigInt / 循环引用导致 JSON.stringify 崩溃 */
+function safeStringify(value: any): string {
+  try {
+    return JSON.stringify(value, (_key, v) => typeof v === "bigint" ? v.toString() : v)
+  } catch {
+    return String(value)
+  }
+}
+
 /**
  * 创建一个 Agent 实例
  *
