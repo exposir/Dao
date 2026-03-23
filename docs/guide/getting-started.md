@@ -1,14 +1,50 @@
-# 快速开始
+# 快速上手
 
-## 安装
+这页只做一件事：让你从空目录出发，5 分钟跑通第一个 Dao Agent。
+
+## 1. 初始化项目
 
 ```bash
-npm install dao-ai
+mkdir my-agent
+cd my-agent
+npm init -y
+npm install dao-ai dotenv
+npm install -D tsx typescript
 ```
 
-## 最简用法
+## 2. 配置环境变量
 
-3 行代码，创建你的第一个 Agent：
+Dao 使用 `provider/model` 格式指定模型。先在项目根目录创建 `.env`：
+
+```env
+DEEPSEEK_API_KEY=your_key
+```
+
+如果你用的是其他 provider，改成对应的 API Key 即可。详细格式见 [模型配置](/model)。
+
+## 3. 写第一个 Agent
+
+创建 `index.ts`：
+
+```typescript
+import "dotenv/config"
+import { agent } from "dao-ai"
+
+const bot = agent({ model: "deepseek/deepseek-chat" })
+console.log(await bot.chat("你好"))
+```
+
+## 4. 运行
+
+```bash
+npx tsx index.ts
+```
+
+如果一切正常，你会在终端看到模型返回的文本。
+
+## 5. 记住这个最小骨架
+
+平时你真正需要记住的只有这几行：
 
 ```typescript
 import { agent } from "dao-ai"
@@ -17,16 +53,9 @@ const bot = agent({ model: "deepseek/deepseek-chat" })
 await bot.chat("你好")
 ```
 
-## 配置模型
+其它像 `.env`、`tsx`、依赖安装，都是项目初始化时做一次。
 
-Dao 使用 `provider/model` 格式指定模型。在项目根目录创建 `.env` 文件：
-
-```env
-# 选择你使用的模型，设置对应的 API Key
-DEEPSEEK_API_KEY=sk-xxx
-```
-
-支持的模型和详细配置见 [模型配置](/model)。
+接下来你可以按需求继续加能力，先别一次性全开：
 
 ## 带工具的 Agent
 

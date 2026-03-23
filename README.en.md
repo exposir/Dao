@@ -44,25 +44,16 @@ Each layer adds just 1–2 lines of code. Complexity grows linearly, never jumps
 
 ## Quick Start
 
-```bash
-mkdir my-agent && cd my-agent
-npm init -y
-npm install dao-ai dotenv
-echo 'DEEPSEEK_API_KEY=your_key' > .env
-```
+Start with the smallest runnable example:
 
 ```typescript
-// index.ts
-import "dotenv/config"
 import { agent } from "dao-ai"
 
 const bot = agent({ model: "deepseek/deepseek-chat" })
 console.log(await bot.chat("Hello"))
 ```
 
-```bash
-npx tsx index.ts
-```
+For full project setup, `.env`, and run commands, see [Getting Started](./docs/guide/getting-started.md).
 
 ---
 

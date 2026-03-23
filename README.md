@@ -44,25 +44,16 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 ## 快速开始
 
-```bash
-mkdir my-agent && cd my-agent
-npm init -y
-npm install dao-ai dotenv
-echo 'DEEPSEEK_API_KEY=your_key' > .env
-```
+先看最小可运行示例：
 
 ```typescript
-// index.ts
-import "dotenv/config"
 import { agent } from "dao-ai"
 
 const bot = agent({ model: "deepseek/deepseek-chat" })
 console.log(await bot.chat("你好"))
 ```
 
-```bash
-npx tsx index.ts
-```
+完整初始化、环境变量、运行命令见 [快速上手文档](./docs/guide/getting-started.md)。
 
 ---
 
