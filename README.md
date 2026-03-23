@@ -44,8 +44,6 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 ## 快速开始
 
-先看最小可运行示例：
-
 ```typescript
 import { agent } from "dao-ai"
 
@@ -53,22 +51,11 @@ const bot = agent({ model: "deepseek/deepseek-chat" })
 console.log(await bot.chat("你好"))
 ```
 
-完整初始化、环境变量、运行命令见 [快速上手文档](./docs/guide/getting-started.md)。
-
 ---
 
 ## 渐进式示例
 
-**1. 最简对话** — 3 行代码，直接和模型对话：
-
-```typescript
-import { agent } from "dao-ai"
-
-const bot = agent({ model: "deepseek/deepseek-chat" })
-const answer = await bot.chat("你好");
-```
-
-**2. 加工具** — 给 Agent 能力，让它能读文件、执行命令：
+**1. 加工具** — 给 Agent 能力，让它能读文件、执行命令：
 
 ```typescript
 const auditor = agent({
@@ -78,7 +65,7 @@ const auditor = agent({
 const result = await auditor.run("审查 src/ 目录");
 ```
 
-**3. 加步骤** — 定义执行流程，支持串行、并行、条件分支：
+**2. 加步骤** — 定义执行流程，支持串行、并行、条件分支：
 
 ```typescript
 const reviewer = agent({
@@ -92,7 +79,7 @@ const reviewer = agent({
 });
 ```
 
-**4. 完整功能** — 团队协作 + 规则约束 + 插件 + 容错，按需叠加：
+**3. 完整功能** — 团队协作 + 规则约束 + 插件 + 容错，按需叠加：
 
 ```typescript
 import { agent, team, plugin } from "dao-ai";
@@ -203,12 +190,12 @@ configure({
 | **V2.4** | 多模态 + MCP + OTel + 国际化                               |  ✅  |
 | **V2.5** | Plugin 可变性 + workspace + ask + state                    |  ✅  |
 
-[完整路线图 →](./docs/roadmap.md)
 
 ## 文档
 
-[完整文档 →](./docs/index.md) · [API 参考 →](./docs/api.md) · [设计原则 →](./docs/principles.md)
+- [快速上手](./docs/guide/getting-started.md)
+- [完整文档](./docs/index.md)
+- [API 参考](./docs/api.md)
+- [设计原则](./docs/principles.md)
+- [路线图](./docs/roadmap.md)
 
-## License
-
-MIT

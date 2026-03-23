@@ -44,8 +44,6 @@ Each layer adds just 1–2 lines of code. Complexity grows linearly, never jumps
 
 ## Quick Start
 
-Start with the smallest runnable example:
-
 ```typescript
 import { agent } from "dao-ai"
 
@@ -53,22 +51,11 @@ const bot = agent({ model: "deepseek/deepseek-chat" })
 console.log(await bot.chat("Hello"))
 ```
 
-For full project setup, `.env`, and run commands, see [Getting Started](./docs/guide/getting-started.md).
-
 ---
 
 ## Progressive Examples
 
-**1. Basic chat** — 3 lines, talk to a model:
-
-```typescript
-import { agent } from "dao-ai"
-
-const bot = agent({ model: "deepseek/deepseek-chat" })
-const answer = await bot.chat("Hello")
-```
-
-**2. Add tools** — Give your Agent capabilities:
+**1. Add tools** — Give your Agent capabilities:
 
 ```typescript
 const auditor = agent({
@@ -78,7 +65,7 @@ const auditor = agent({
 const result = await auditor.run("Review the src/ directory")
 ```
 
-**3. Add steps** — Define execution flow with sequential, parallel, and conditional branches:
+**2. Add steps** — Define execution flow with sequential, parallel, and conditional branches:
 
 ```typescript
 const reviewer = agent({
@@ -92,7 +79,7 @@ const reviewer = agent({
 })
 ```
 
-**4. Full features** — Team collaboration + rules + plugins + fault tolerance, stack as needed:
+**3. Full features** — Team collaboration + rules + plugins + fault tolerance, stack as needed:
 
 ```typescript
 import { agent, team, plugin } from "dao-ai"
@@ -203,12 +190,12 @@ configure({
 | **V2.4** | Multimodal + MCP + OTel + i18n | ✅ |
 | **V2.5** | Plugin mutability + workspace + ask + state | ✅ |
 
-[Full roadmap →](./docs/roadmap.md)
 
 ## Documentation
 
-[Full docs →](./docs/index.md) · [API reference →](./docs/api.md) · [Design principles →](./docs/principles.md)
+- [Getting Started](./docs/guide/getting-started.md)
+- [Full Documentation](./docs/index.md)
+- [API Reference](./docs/api.md)
+- [Design Principles](./docs/principles.md)
+- [Roadmap](./docs/roadmap.md)
 
-## License
-
-MIT
