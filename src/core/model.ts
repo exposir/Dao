@@ -131,14 +131,19 @@ export function getProviderNames(): string[] {
   return Object.keys(PROVIDERS)
 }
 
-/** 初始 provider 快照（用于 reset） */
-const INITIAL_PROVIDER_NAMES = Object.keys(PROVIDERS)
+/** 初始 provider 快照（包含完整实现，用于 reset 时恢复被覆写的内置 provider） */
+const INITIAL_PROVIDERS: Record<string, ProviderEntry> = { ...PROVIDERS }
 
-/** 重置 provider 注册表（测试用，移除所有自定义注册的 provider） */
+/** 重置 provider 注册表（测试用，移除自定义 provider 并恢复被覆写的内置 provider） */
 export function resetProviders(): void {
+  // 删除所有非初始的键
   for (const key of Object.keys(PROVIDERS)) {
-    if (!INITIAL_PROVIDER_NAMES.includes(key)) {
+    if (!(key in INITIAL_PROVIDERS)) {
       delete PROVIDERS[key]
     }
+  }
+  // 恢复被覆写的内置 provider
+  for (const [key, value] of Object.entries(INITIAL_PROVIDERS)) {
+    PROVIDERS[key] = value
   }
 }

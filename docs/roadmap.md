@@ -95,6 +95,13 @@
 
 > **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。
 
+## V3.0 📋 平台化
+
+> Per-run 隔离 + API 破坏性变更
+
+- [ ] `resume()` per-run token（`bot.run()` 返回 `{ promise, runId }`，`bot.resume(runId, data)` 精确恢复单个 run）
+- [ ] Team per-run 状态隔离（memberResults 绑定到 run，而不是 team 实例）
+
 ---
 
 ## 🚫 明确不做
@@ -105,3 +112,10 @@
 - **Agent 通信协议** — `team()` + `delegates` 已满足多 Agent 协作，不引入额外协议层
 - **沙箱 / 安全隔离** — 工具执行沙箱化过于重量级，安全由使用者自行控制
 - **长时运行 / 状态持久化** — 跑数小时、断点恢复、checkpoint 等机制过重，不符合轻量定位
+
+## ✅ 设计决策（By Design）
+
+> 以下行为是有意的工程取舍，不是 bug：
+
+- **`team({ lead })` 重建 lead** — lead 需要注入 delegate 工具，而工具列表是 agent 创建时固定的，复用原实例需要动态注入，引入更多复杂度
+- **`getConfig()` 非完整深拷贝** — tools/plugins 含函数引用和闭包状态，`structuredClone` 无法处理；顶层副本 + rules/steps 数组复制已覆盖 99% 误操作

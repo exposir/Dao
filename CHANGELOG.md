@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.2.4 (2026-03-23)
+
+### Bug Fixes
+
+- **engine**: ConditionalStep 字符串条件 LLM 调用失败时不再静默返回 `false`，改为上抛异常
+- **engine**: `onWait` 回调在递归调用 `executeStep` 时正确传递，嵌套 `{ if: x, then: { wait: true } }` 不再崩溃
+- **engine**: `ParallelStep` 中 `AbortError` 不再被 `Promise.allSettled` 降级为 `{ error }`，保持全局中断语义
+- **engine**: `ParallelStep` 每个子步骤使用独立 `ctx` 浅拷贝，防止并行竞态污染 `history` 和 `lastResult`
+- **engine**: 所有 `JSON.stringify(ctx.lastResult)` 改用 `safeStringify`，防止循环引用导致崩溃
+- **engine**: WaitStep `Promise.race` 的 `setTimeout` 句柄在 `finally` 中清理，防止 timer 泄漏
+- **engine**: 重试 prompt 注入上次实际输出，LLM 可对照错误修正而非盲目重试
+- **loop**: `ctx.abort()` 在 Agent Loop 工具中通过 `AbortController` 信号中断 `generateText`/`streamText`
+- **plugin**: `PluginManager.emit()` 每个 hook 包裹 `try/catch`，非 `onError` hook 报错不再炸穿核心路径
+- **team**: 修正 `streamRef` 注释
+
+### Features
+
+- **engine**: WaitStep 新增可选 `timeout` 参数（毫秒），超时后抛出错误
+- **types**: `WaitStep` 接口新增 `timeout?: number` 字段
+
+### Tests
+
+- 新增嵌套 wait、并行 AbortError、ctx 隔离、插件异常隔离、重试上下文注入等测试
+- 测试总数从 88 增至 111 (+23)
+
+## 2.2.3 (2026-03-23)
+
+### Documentation
+
+- **team.md**: 新增并发限制（§9）、自定义 lead 重建行为（§10）、流式模式数据链路（§11）三个章节
+- **api.md**: `TeamInstance` 类型补充并发限制 WARNING 警告
+- **engine.md**: wait/resume 补充"广播式恢复"设计限制说明，新增 runStream()+steps 缓冲式行为说明（§9）
+- **principles.md**: 闭包封装模式补充 stream 分支走 `runStream()` 的描述；可测试性更新为 V2.2 ✅
+
+### Tests
+
+- **fallback.test.ts**: 重写，新增主模型失败抛错验证和副作用工具调用测试（6 tests）
+- **abort.test.ts**: 重写，新增 AbortError 穿透验证、onError 插件交互测试、非 abort 错误触发 onError 验证（6 tests）
+- **team.test.ts**: 补充 `getMembers()` 副本验证、`run()` + memberResults 结构验证（5 tests → from 3）
+- **agent.test.ts**: 补充 `getConfig()` 深层拷贝测试：steps 数组、rules.focus/reject、delegates 引用（8 tests → from 5）
+- 测试总数从 88 增至 99 (+11)
+
 ## 2.2.2 (2026-03-23)
 
 ### Bug Fixes

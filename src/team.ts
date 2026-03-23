@@ -51,7 +51,7 @@ export function team(options: TeamOptions): TeamInstance {
     memberResults[name] = []
   }
 
-  // 用于 stream 时的事件合并（使用 ref 对象以支持并发安全）
+  // 用于 stream 时的事件合并（ref 对象，runStream 期间设置回调，结束后清空）
   const streamRef: { yieldCb: ((event: TeamRunEvent) => void) | null } = { yieldCb: null }
 
   // 为 lead 创建 delegate 工具
@@ -154,7 +154,7 @@ export function team(options: TeamOptions): TeamInstance {
       return {
         output: result.output,
         // 这里需要深拷贝传递，否则多次外部 run() 并发引用的还是同一个引用对象
-        memberResults: JSON.parse(JSON.stringify(memberResults)),
+        memberResults: safeDeepCopy(memberResults),
         usage: totalUsage,
         duration: Date.now() - startTime,
       }

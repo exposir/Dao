@@ -96,6 +96,8 @@ export interface WaitStep {
   wait: true
   /** 等待描述（可选，仅供日志用） */
   reason?: string
+  /** 等待超时（毫秒），超时后抛出错误，默认不限时 */
+  timeout?: number
 }
 
 export interface ParallelStep {

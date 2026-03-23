@@ -161,7 +161,7 @@ export function agent(options: AgentOptions): AgentInstance {
           } else {
             output = typeof lastResult?.result === "string"
               ? lastResult.result
-              : JSON.stringify(lastResult?.result ?? "")
+              : safeStringify(lastResult?.result ?? "")
           }
 
           // 汇总所有步骤的 token 用量
@@ -283,7 +283,7 @@ export function agent(options: AgentOptions): AgentInstance {
           } else {
             outputText = typeof lastResult?.result === "string"
               ? lastResult.result
-              : JSON.stringify(lastResult?.result ?? "")
+              : safeStringify(lastResult?.result ?? "")
           }
           yield { type: "text", data: outputText }
 

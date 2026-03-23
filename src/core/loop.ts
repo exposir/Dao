@@ -45,6 +45,12 @@ function extractUsage(raw: any): TokenUsage {
   return { promptTokens: input, completionTokens: output, totalTokens: input + output }
 }
 
+/** 工具中止引用，用于从工具内部中止 Agent Loop */
+interface AbortRef {
+  reason: string | null
+  controller: AbortController
+}
+
 /** 将 ToolInstance[] 转为 AI SDK 的 tools 格式 */
 function toAITools(
   tools: ToolInstance[],
@@ -52,6 +58,7 @@ function toAITools(
   pm?: PluginManager,
   options?: AgentOptions,
   onToolCall?: (name: string, params: any, result: any) => void,
+  abortRef?: AbortRef,
 ): ToolSet {
   const result: ToolSet = {}
   for (const t of tools) {
@@ -86,7 +93,15 @@ function toAITools(
         try {
           const ctx: ToolContext = {
             agent: agentInstance,
-            abort: (reason?: string) => { throw new AbortError(reason ?? "工具中止执行") },
+            abort: (reason?: string) => {
+              const msg = reason ?? "工具中止执行"
+              // 存储中止原因，并通过 AbortController 信号中断 generateText/streamText
+              if (abortRef) {
+                abortRef.reason = msg
+                abortRef.controller.abort()
+              }
+              throw new AbortError(msg)
+            },
           }
           const output = await t.execute(params, ctx)
           const toolResult = typeof output === "string" ? output : JSON.stringify(output)
@@ -177,7 +192,8 @@ export async function runLoop(
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
   const systemPrompt = buildSystemPrompt(options)
-  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options) : undefined
+  // tools 在 abortRef 之后初始化（见下方）
+  let tools: ToolSet | undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,
@@ -186,13 +202,15 @@ export async function runLoop(
 
   const startTime = Date.now()
 
-  // 超时控制
-  let controller: AbortController | undefined
+  // AbortController：同时用于超时控制和工具中止
+  const controller = new AbortController()
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   if (options.timeout) {
-    controller = new AbortController()
-    timeoutId = setTimeout(() => controller!.abort(), options.timeout)
+    timeoutId = setTimeout(() => controller.abort(), options.timeout)
   }
+
+  // 工具中止引用：工具调用 ctx.abort() 时会设置 reason 并触发 controller.abort()
+  const abortRef: AbortRef = { reason: null, controller }
 
   // 触发 beforeModelCall hook
   if (pm) {
@@ -203,6 +221,9 @@ export async function runLoop(
     }
   }
 
+  // 初始化 tools（需要 abortRef）
+  tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, undefined, abortRef) : undefined
+
   try {
     const result = await generateText({
       model,
@@ -212,7 +233,7 @@ export async function runLoop(
       temperature: options.temperature,
       maxOutputTokens: options.maxTokens,
       maxRetries: options.retry?.maxRetries ?? 2,
-      abortSignal: controller?.signal,
+      abortSignal: controller.signal,
       stopWhen: stepCountIs(maxTurns),
       providerOptions: {
         openai: { strictJsonSchema: false },
@@ -220,6 +241,11 @@ export async function runLoop(
     })
 
     if (timeoutId) clearTimeout(timeoutId)
+
+    // 工具调用了 ctx.abort() 但 AI SDK 内部捕获了异常并完成了后续调用
+    if (abortRef.reason) {
+      throw new AbortError(abortRef.reason)
+    }
 
     const usage = extractUsage(result.totalUsage)
 
@@ -249,7 +275,13 @@ export async function runLoop(
     // ctx.abort() 抛出的 AbortError 需要优先穿透，不走超时/fallback 逻辑
     if (err instanceof AbortError) throw err
 
-    const isTimeout = controller?.signal?.aborted || err?.name === "AbortError"
+    // 工具内部调用了 ctx.abort()，通过 AbortController 中断了 generateText
+    // AI SDK 会抛出原生 AbortError（name === "AbortError"），需要检查 abortRef 来区分
+    if (abortRef.reason) {
+      throw new AbortError(abortRef.reason)
+    }
+
+    const isTimeout = controller.signal.aborted || err?.name === "AbortError"
 
     // 有 fallbackModel 时，超时和普通错误都走 fallback
     if (options.fallbackModel) {
@@ -345,20 +377,23 @@ export async function* runLoopStream(
     hasExecutedTools = true
     toolCallEvents.push({ type: "tool_call", data: { tool: name, params, result } })
   }
-  const tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, onToolCall) : undefined
+  // tools 在 abortRef 之后初始化（见下方）
+  let tools: ToolSet | undefined
 
   const messages: ModelMessage[] = [
     ...messageHistory,
     { role: "user", content: task },
   ]
 
-  // 超时控制
-  let controller: AbortController | undefined
+  // AbortController：同时用于超时控制和工具中止
+  const controller = new AbortController()
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   if (options.timeout) {
-    controller = new AbortController()
-    timeoutId = setTimeout(() => controller!.abort(), options.timeout)
+    timeoutId = setTimeout(() => controller.abort(), options.timeout)
   }
+
+  // 工具中止引用
+  const abortRef: AbortRef = { reason: null, controller }
 
   // 触发 beforeModelCall hook
   if (pm) {
@@ -372,6 +407,9 @@ export async function* runLoopStream(
 
   let hasYieldedText = false
 
+  // 初始化 tools（需要 abortRef）
+  tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, onToolCall, abortRef) : undefined
+
   try {
     const result = streamText({
       model,
@@ -381,7 +419,7 @@ export async function* runLoopStream(
       temperature: options.temperature,
       maxOutputTokens: options.maxTokens,
       maxRetries: options.retry?.maxRetries ?? 2,
-      abortSignal: controller?.signal,
+      abortSignal: controller.signal,
       stopWhen: stepCountIs(maxTurns),
     })
 
@@ -403,6 +441,11 @@ export async function* runLoopStream(
 
     if (timeoutId) clearTimeout(timeoutId)
 
+    // 工具调用了 ctx.abort() 但 AI SDK 内部捕获了异常并完成了后续调用
+    if (abortRef.reason) {
+      throw new AbortError(abortRef.reason)
+    }
+
     // 获取真实用量
     const totalUsage = await result.totalUsage
     const usage = extractUsage(totalUsage)
@@ -421,7 +464,12 @@ export async function* runLoopStream(
 
     if (err instanceof AbortError) throw err
 
-    if (controller?.signal?.aborted || err?.name === "AbortError") {
+    // 工具中止
+    if (abortRef.reason) {
+      throw new AbortError(abortRef.reason)
+    }
+
+    if (controller.signal.aborted || err?.name === "AbortError") {
       // 超时：如果有 fallback 且没有已执行的工具，走 fallback
       if (options.fallbackModel && !hasYieldedText && !hasExecutedTools) {
         try {

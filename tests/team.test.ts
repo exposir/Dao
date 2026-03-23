@@ -63,4 +63,43 @@ describe("team()", () => {
       team({ members: { coder }, strategy: "auto" })
     ).not.toThrow()
   })
+
+  it("getMembers() 返回的应该是副本", () => {
+    const coder = mockMember("开发者")
+    const t = team({ members: { coder } })
+
+    const members = t.getMembers()
+    // 修改返回值不应影响内部
+    delete (members as any).coder
+    expect(Object.keys(t.getMembers())).toEqual(["coder"])
+  })
+})
+
+describe("team.run() 行为", () => {
+  it("run() 应返回 output 和 usage", async () => {
+    // 用 mockModel 创建真实可运行的 members
+    const { mockModel } = await import("../src/mock.js")
+
+    const coder = agent({
+      role: "开发者",
+      modelProvider: mockModel(["代码写好了"]),
+    })
+
+    // lead 需要足够多的响应来完成调度
+    const t = team({
+      lead: agent({
+        role: "负责人",
+        modelProvider: mockModel(["任务分析完成"]),
+      }),
+      members: { coder },
+    })
+
+    const result = await t.run("写代码")
+    expect(result).toHaveProperty("output")
+    expect(result).toHaveProperty("usage")
+    expect(result).toHaveProperty("duration")
+    expect(result).toHaveProperty("memberResults")
+    expect(typeof result.output).toBe("string")
+    expect(result.duration).toBeGreaterThanOrEqual(0)
+  })
 })

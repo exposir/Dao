@@ -218,3 +218,63 @@ await lead.run("写一篇关于 AI 的文章")
 // lead 可以自主委派子任务给 researcher 和 writer
 ```
 
+---
+
+## 9. 并发限制
+
+> [!WARNING]
+> **同一个 team 实例同一时间只能执行一个 `run()` 或 `runStream()`。** 并发调用会导致 `memberResults` 和流式事件互相污染。
+
+```typescript
+// ❌ 错误：并发调用同一个 team 实例
+const squad = team({ members: { coder, tester } })
+await Promise.all([
+  squad.run("任务A"),  // memberResults 会互相污染
+  squad.run("任务B"),
+])
+
+// ✅ 正确：串行执行
+const result1 = await squad.run("任务A")
+const result2 = await squad.run("任务B")
+
+// ✅ 正确：创建多个 team 实例并行
+const squad1 = team({ members: { coder, tester } })
+const squad2 = team({ members: { coder, tester } })
+await Promise.all([squad1.run("任务A"), squad2.run("任务B")])
+```
+
+**原因**：`memberResults` 和 `streamRef.yieldCb` 是 team 实例级闭包状态，不支持 per-run 隔离。
+
+---
+
+## 10. 自定义 lead 的重建机制（By Design）
+
+`team({ lead })` **不会直接使用**传入的 lead 实例运行，这是有意的设计。框架会：
+
+1. 调用 `lead.getConfig()` 提取配置
+2. 用 `agent({ ...config, tools: [...config.tools, delegateTool] })` 创建一个新实例
+3. 原 lead 的 memory 历史、插件 store、闭包状态都**不会被继承**
+
+```typescript
+const myLead = agent({ role: "PM", memory: true })
+await myLead.chat("记住 X=1")  // 存入 myLead 的 memory
+
+const squad = team({ lead: myLead, members: { coder } })
+await squad.run("任务")  
+// ⚠️ squad 的内部 lead 不会知道 X=1，因为它是重建的新实例
+```
+
+如果需要 lead 保持状态，建议在 team 外部管理状态，通过 `systemPrompt` 或 `background` 传递上下文。
+
+---
+
+## 11. 流式模式数据链路
+
+`runStream()` 和 `run()` 的 delegate 调用路径不同：
+
+| 模式 | delegate 调用方式 | 事件暴露 |
+|------|------------------|---------|
+| `run()` | `member.run(task)` | 无中间事件 |
+| `runStream()` | `member.runStream(task)` | 成员的 text/done 事件会实时合并到 team 的事件流 |
+
+流式模式下，成员执行的中间过程（文本片段、tool_call 等）会通过 async queue 实时推送，每个事件带有 `member` 字段标识来源。

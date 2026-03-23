@@ -30,6 +30,15 @@ export interface StepResult {
  */
 export type ExecuteTaskFn = (task: string) => Promise<RunResult>
 
+/** 安全序列化，防止循环引用导致 JSON.stringify 崩溃 */
+function safeStringify(value: any): string {
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
 /**
  * 执行步骤序列
  */
@@ -89,7 +98,7 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
   if (typeof step === "string") {
     let prompt = step
     if (ctx.lastResult != null && ctx.lastResult !== "") {
-      const lastStr = typeof ctx.lastResult === "string" ? ctx.lastResult : JSON.stringify(ctx.lastResult)
+      const lastStr = typeof ctx.lastResult === "string" ? ctx.lastResult : safeStringify(ctx.lastResult)
       prompt = `上一步的执行结果：\n${lastStr}\n\n当前步骤：${step}`
     }
     const result = await executeTask(prompt)
@@ -106,6 +115,25 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
     if (!onWait) {
       throw new Error("wait 步骤需要 resume() 支持，请通过 agent 实例调用")
     }
+    // 支持可选超时（确保 setTimeout 句柄始终被清理）
+    if (step.timeout && step.timeout > 0) {
+      let timeoutId: ReturnType<typeof setTimeout>
+      try {
+        return await Promise.race([
+          onWait(),
+          new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(
+              () => reject(new Error(
+                `wait 步骤超时（${step.timeout}ms）${step.reason ? `：${step.reason}` : ""}`
+              )),
+              step.timeout,
+            )
+          }),
+        ])
+      } finally {
+        clearTimeout(timeoutId!)
+      }
+    }
     return await onWait()
   }
 
@@ -116,12 +144,12 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
 
   // 并行步骤
   if (isParallelStep(step)) {
-    return await executeParallel(step, ctx, executeTask)
+    return await executeParallel(step, ctx, executeTask, onWait)
   }
 
   // 条件步骤
   if (isConditionalStep(step)) {
-    return await executeConditional(step, ctx, executeTask)
+    return await executeConditional(step, ctx, executeTask, onWait)
   }
 
   throw new Error(`未知的步骤类型: ${JSON.stringify(step)}`)
@@ -130,31 +158,43 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
 /**
  * 并行执行多个子步骤
  */
-async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any[]> {
+async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask: ExecuteTaskFn, onWait?: () => Promise<any>): Promise<any[]> {
   const concurrency = Math.max(1, step.concurrency ?? Infinity)
   const tasks = step.parallel
 
-  /** 将 allSettled 结果提取为值或错误对象 */
+  /** 将 allSettled 结果提取为值或错误对象，AbortError 优先穿透 */
   function extractResults(settled: PromiseSettledResult<any>[]): any[] {
+    // 检查是否有 AbortError，如有则立即上抛，保持 abort 的全局中断语义
+    for (const r of settled) {
+      if (r.status === "rejected" && r.reason instanceof AbortError) {
+        throw r.reason
+      }
+    }
     return settled.map(r =>
       r.status === "fulfilled" ? r.value : { error: r.reason?.message ?? String(r.reason) }
     )
   }
 
   if (concurrency >= tasks.length) {
-    // 无限制，全部并行
+    // 无限制，全部并行（每个子步骤用独立的 ctx 副本，防止竞态污染）
     const settled = await Promise.allSettled(
-      tasks.map(subStep => executeStep(subStep as Step, ctx, executeTask))
+      tasks.map(subStep => {
+        const childCtx: StepContext = { ...ctx, history: [...ctx.history] }
+        return executeStep(subStep as Step, childCtx, executeTask, onWait)
+      })
     )
     return extractResults(settled)
   }
 
-  // 分批执行，同时最多 concurrency 个
+  // 分批执行，同时最多 concurrency 个（每个子步骤用独立的 ctx 副本）
   const results: any[] = []
   for (let i = 0; i < tasks.length; i += concurrency) {
     const batch = tasks.slice(i, i + concurrency)
     const settled = await Promise.allSettled(
-      batch.map(subStep => executeStep(subStep as Step, ctx, executeTask))
+      batch.map(subStep => {
+        const childCtx: StepContext = { ...ctx, history: [...ctx.history] }
+        return executeStep(subStep as Step, childCtx, executeTask, onWait)
+      })
     )
     results.push(...extractResults(settled))
   }
@@ -164,7 +204,7 @@ async function executeParallel(step: ParallelStep, ctx: StepContext, executeTask
 /**
  * 条件执行
  */
-async function executeConditional(step: ConditionalStep, ctx: StepContext, executeTask: ExecuteTaskFn): Promise<any> {
+async function executeConditional(step: ConditionalStep, ctx: StepContext, executeTask: ExecuteTaskFn, onWait?: () => Promise<any>): Promise<any> {
   const maxAttempts = (step.retry ?? 0) + 1
   let lastResult: any = null
 
@@ -175,7 +215,7 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
       // 字符串条件 → 让 Agent 判断，注入上下文让 LLM 能感知当前状态
       try {
         const contextInfo = ctx.lastResult != null
-          ? `\n当前上下文（上一步执行结果）：\n${typeof ctx.lastResult === "string" ? ctx.lastResult : JSON.stringify(ctx.lastResult)}\n\n`
+          ? `\n当前上下文（上一步执行结果）：\n${typeof ctx.lastResult === "string" ? ctx.lastResult : safeStringify(ctx.lastResult)}\n\n`
           : ""
         const answerResult = await executeTask(
           `${contextInfo}请判断以下条件是否成立，只回答"YES"或"NO"：${step.if}`
@@ -187,8 +227,9 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
         condition = isYes && !isNo
       } catch (err) {
         if (err instanceof AbortError) throw err
-        // 字符串条件（LLM 判断）异常时兜底 false
-        condition = false
+        // 字符串条件（LLM 判断）异常时上抛，而不是静默返回 false
+        // 这样外层 runSteps 的 catch 会记录错误并继续执行下一步
+        throw err
       }
     } else {
       // 函数条件 → 直接执行，异常直接上抛
@@ -199,7 +240,7 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
       // 条件为 YES → 执行 then 分支
       if (step.then) {
         try {
-          lastResult = await executeStep(step.then as Step, ctx, executeTask)
+          lastResult = await executeStep(step.then as Step, ctx, executeTask, onWait)
         } catch (err) {
           if (err instanceof AbortError) throw err
           lastResult = { error: (err as Error).message }
@@ -214,7 +255,7 @@ async function executeConditional(step: ConditionalStep, ctx: StepContext, execu
       // 条件为 NO → 执行 else 分支（如有）并结束
       if (step.else) {
         try {
-          return await executeStep(step.else as Step, ctx, executeTask)
+          return await executeStep(step.else as Step, ctx, executeTask, onWait)
         } catch (err) {
           if (err instanceof AbortError) throw err
           return { error: (err as Error).message }
@@ -252,7 +293,7 @@ async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn, ctx?:
   // 拼装 prompt：task + lastResult + output 预期
   let prompt = step.task
   if (ctx?.lastResult != null && ctx.lastResult !== "") {
-    const lastStr = typeof ctx.lastResult === "string" ? ctx.lastResult : JSON.stringify(ctx.lastResult)
+    const lastStr = typeof ctx.lastResult === "string" ? ctx.lastResult : safeStringify(ctx.lastResult)
     prompt = `上一步的执行结果：\n${lastStr}\n\n当前步骤：${prompt}`
   }
   if (step.output) {
@@ -261,12 +302,13 @@ async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn, ctx?:
 
   const maxAttempts = (step.maxRetries ?? 0) + 1
   let lastFeedback = ""
+  let lastOutput = ""
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const result = await executeTask(
       attempt === 0
         ? prompt
-        : `${prompt}\n\n上次输出未通过校验，原因：${lastFeedback}\n请重新生成。`
+        : `${prompt}\n\n--- 上次尝试 ---\n你上次的输出：\n${lastOutput}\n\n校验未通过，原因：${lastFeedback}\n请对照上面的错误输出进行修正。`
     )
 
     // 无校验函数，直接返回
@@ -280,7 +322,8 @@ async function executeTaskStep(step: TaskStep, executeTask: ExecuteTaskFn, ctx?:
       return result.output
     }
 
-    // 校验失败
+    // 校验失败：记录本次输出和反馈，供下次重试使用
+    lastOutput = result.output
     lastFeedback = typeof validation === "string" ? validation : "输出格式不符合要求"
 
     // 最后一次尝试仍失败，返回结果（不抛错）

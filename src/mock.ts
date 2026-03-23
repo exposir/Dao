@@ -82,20 +82,27 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
 
       const stream = new ReadableStream({
         start(controller: any) {
+          const textId = `text-${Date.now()}`
+          // AI SDK v3 协议：text-start → text-delta(s) → text-end → finish
           controller.enqueue({
-            type: "text-delta",
-            textDelta: text,
+            type: "text-start",
+            id: textId,
           })
           controller.enqueue({
-            type: "source",
-            source: undefined,
+            type: "text-delta",
+            id: textId,
+            delta: text,
+          })
+          controller.enqueue({
+            type: "text-end",
+            id: textId,
           })
           controller.enqueue({
             type: "finish",
             finishReason: "stop",
             usage: {
-              inputTokens: { total: text.length },
-              outputTokens: { total: text.length },
+              inputTokens: text.length,
+              outputTokens: text.length,
             },
           })
           controller.close()

@@ -54,7 +54,7 @@ agent({ role, model, tools, steps, rules, memory })
 
 ### 3. 闭包封装模式（Closure Encapsulation）
 
-`team()` 内部通过闭包创建 delegate 工具和 memberResults。delegate 工具调用 `member.run()` 时自动收集结果到共享的 memberResults 对象。不暴露内部状态，不用 class 的 private。
+`team()` 内部通过闭包创建 delegate 工具和 memberResults。delegate 工具在 `run()` 模式下调用 `member.run()` 收集结果，在 `runStream()` 模式下调用 `member.runStream()` 并将成员事件实时合并到 team 的事件流中。不暴露内部状态，不用 class 的 private。
 
 ### 4. 适配器模式（Adapter）
 

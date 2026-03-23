@@ -107,9 +107,17 @@ export const runCommand = tool({
         timeout: 30000,
         maxBuffer: 1024 * 1024,
       })
-      return (stdout.trim() || stderr.trim()) || "(命令执行成功，无输出)"
+      // 合并 stdout 和 stderr，都返回（避免丢失部分输出）
+      const out = stdout.trim()
+      const err = stderr.trim()
+      if (out && err) return `${out}\n---stderr---\n${err}`
+      return out || err || "(命令执行成功，无输出)"
     } catch (err: any) {
-      return `命令执行失败：${err.message}\n${err.stderr ?? ""}`
+      // exec 非零退出时 err 包含 stdout 和 stderr，都要返回
+      const parts = [`命令执行失败：${err.message}`]
+      if (err.stdout?.trim()) parts.push(err.stdout.trim())
+      if (err.stderr?.trim()) parts.push(`---stderr---\n${err.stderr.trim()}`)
+      return parts.join("\n")
     }
   },
 })

@@ -274,4 +274,116 @@ describe("TaskStep validate 重试", () => {
     expect(results[0].result).toBe("valid-json")
     expect(attempt).toBe(2)
   })
+
+  it("重试 prompt 应包含上次的实际输出", async () => {
+    const agent = mockAgent()
+    const prompts: string[] = []
+    let attempt = 0
+    const executeTask = async (task: string): Promise<RunResult> => {
+      prompts.push(task)
+      attempt++
+      return {
+        output: attempt >= 2 ? "correct" : "wrong-answer",
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    await runSteps([{
+      task: "生成报告",
+      validate: (r: string) => r === "correct" ? true : "内容错误",
+      maxRetries: 2,
+    }], agent, executeTask)
+
+    expect(prompts).toHaveLength(2)
+    // 第二次 prompt 应包含上次的错误输出和校验原因
+    expect(prompts[1]).toContain("wrong-answer")
+    expect(prompts[1]).toContain("内容错误")
+    expect(prompts[1]).toContain("上次尝试")
+  })
+})
+
+describe("ConditionalStep 条件判断失败", () => {
+  it("字符串条件 LLM 异常应记录错误而不是静默走 else", async () => {
+    const agent = mockAgent()
+    const failingExecuteTask = async (task: string): Promise<RunResult> => {
+      if (task.includes("请判断")) {
+        throw new Error("网络超时")
+      }
+      return {
+        output: `完成: ${task.slice(0, 20)}`,
+        turns: [],
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        duration: 0,
+      }
+    }
+
+    const results = await runSteps([
+      {
+        if: "数据是否合格",
+        then: "处理数据",
+        else: "跳过处理",
+      },
+    ], agent, failingExecuteTask)
+
+    // 应该记录错误，而不是静默走 else 返回 "跳过处理" 的结果
+    expect(results).toHaveLength(1)
+    expect(results[0].result).toHaveProperty("error")
+    expect(results[0].result.error).toContain("网络超时")
+  })
+})
+
+describe("WaitStep 超时", () => {
+  it("设置 timeout 后超时应报错", async () => {
+    const agent = mockAgent()
+    // onWait 永远不 resolve
+    const hangingWait = () => new Promise<any>(() => {})
+
+    const results = await runSteps([
+      { wait: true, timeout: 50, reason: "等待审批" },
+      "后续步骤",
+    ], agent, mockExecuteTask, undefined, undefined, undefined, hangingWait)
+
+    // 超时被 runSteps 的 catch 捕获，记录错误并继续
+    expect(results).toHaveLength(2)
+    expect(results[0].result).toHaveProperty("error")
+    expect(results[0].result.error).toContain("wait 步骤超时")
+    expect(results[0].result.error).toContain("等待审批")
+    // 后续步骤应继续执行
+    expect(results[1].result).toContain("完成")
+  })
+
+  it("不设 timeout 时 WaitStep 应正常等待 resume", async () => {
+    const agent = mockAgent()
+    const quickWait = () => Promise.resolve("审批通过")
+
+    const results = await runSteps([
+      { wait: true, reason: "等待审批" },
+    ], agent, mockExecuteTask, undefined, undefined, undefined, quickWait)
+
+    expect(results).toHaveLength(1)
+    expect(results[0].result).toBe("审批通过")
+  })
+})
+
+describe("ParallelStep 上下文隔离", () => {
+  it("并行子步骤不应污染彼此的 ctx.history", async () => {
+    const agent = mockAgent()
+    // 两个并行字符串步骤
+    const results = await runSteps([
+      {
+        parallel: ["任务A", "任务B", "任务C"],
+      },
+    ], agent, mockExecuteTask)
+
+    expect(results).toHaveLength(1)
+    // 结果应该是数组（三个并行结果）
+    const parallelResults = results[0].result
+    expect(parallelResults).toHaveLength(3)
+    // 每个子任务应独立完成
+    expect(parallelResults[0]).toContain("完成")
+    expect(parallelResults[1]).toContain("完成")
+    expect(parallelResults[2]).toContain("完成")
+  })
 })

@@ -13,8 +13,24 @@ import "dotenv/config"
 const MODEL = "deepseek/deepseek-chat"
 const hasKey = !!process.env.DEEPSEEK_API_KEY
 
-// 跳过条件：无 API Key 时整组跳过
-const describeE2E = hasKey ? describe : describe.skip
+// 网络可达性预检：HEAD 请求 DeepSeek API，3 秒超时
+let networkOk = false
+if (hasKey) {
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 3000)
+    await fetch("https://api.deepseek.com", {
+      method: "HEAD",
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(timer))
+    networkOk = true
+  } catch {
+    // DNS/网络不可达，跳过 E2E
+  }
+}
+
+// 跳过条件：无 API Key 或网络不可达时整组跳过
+const describeE2E = hasKey && networkOk ? describe : describe.skip
 
 describeE2E("E2E: chat()", () => {
   it("应该返回非空字符串", async () => {

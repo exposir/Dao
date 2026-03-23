@@ -212,7 +212,13 @@ interface AgentInstance {
   /** 结构化输出任务执行 (V2.2) */
   generate<T>(task: string, options: GenerateOptions<T>): Promise<GenerateResult<T>>
 
-  /** 恢复被 wait 步骤暂停的执行 */
+  /**
+   * > [!NOTE]
+   * > `run()`、`runStream()`、`generate()` 都是无状态的一次性调用，
+   * > 不读取也不写入 `messageHistory`，无论 `memory: true` 与否。
+   * > 只有 `chat()` / `chatStream()` 会使用和维护上下文记忆。
+   */
+
   resume(data?: any): void
 
   /** 清除记忆 */
@@ -316,6 +322,12 @@ interface TeamInstance {
   /** 获取成员列表 */
   getMembers(): Record<string, AgentInstance>
 }
+```
+
+> [!WARNING]
+> 同一个 TeamInstance **不支持并发** `run()` / `runStream()`。
+> `memberResults` 和流式回调是实例级闭包状态，并发调用会互相污染。
+> 需要并行执行时，请创建多个 team 实例。
 
 interface TeamRunResult {
   /** 最终输出 */

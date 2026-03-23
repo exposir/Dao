@@ -87,7 +87,17 @@ export class PluginManager {
         ...extra,
       }
 
-      await (hook as (ctx: HookContext) => void | Promise<void>)(ctx)
+      try {
+        await (hook as (ctx: HookContext) => void | Promise<void>)(ctx)
+      } catch (err) {
+        // onError hook 自身报错不应吞掉，否则错误处理链断裂
+        if (hookName === "onError") throw err
+        // 其他 hook 报错不应炸穿核心路径，打印警告并继续
+        console.warn(
+          `[Dao] 插件 "${p.name}" 的 ${String(hookName)} hook 执行出错:`,
+          err instanceof Error ? err.message : err,
+        )
+      }
       if (skipped) break
     }
 

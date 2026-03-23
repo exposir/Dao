@@ -30,9 +30,12 @@ export function configure(options: ConfigOptions): void {
   globalConfig = { ...globalConfig, ...options }
 }
 
-/** 获取当前全局配置（内部使用） */
+/** 获取当前全局配置（返回副本，防止外部直接修改内部状态） */
 export function getGlobalConfig(): ConfigOptions {
-  return globalConfig
+  const copy = { ...globalConfig }
+  // 隔离嵌套数组引用
+  if (copy.globalPlugins) copy.globalPlugins = [...copy.globalPlugins]
+  return copy
 }
 
 /** 重置全局配置（测试用） */

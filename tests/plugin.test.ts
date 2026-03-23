@@ -214,3 +214,37 @@ describe("store 共享机制", () => {
     expect(finalCount).toBe(3)
   })
 })
+
+describe("插件异常隔离", () => {
+  it("非 onError hook 报错不应炸穿框架", async () => {
+    const agent = { chat: async () => "", run: async () => ({} as any), getConfig: () => ({} as any) } as any
+
+    const crashPlugin = plugin({
+      name: "crash",
+      hooks: {
+        beforeModelCall: () => { throw new Error("日志服务挂了") },
+      },
+    })
+
+    const pm = new PluginManager([crashPlugin])
+    // 不应该抛错
+    const result = await pm.emit("beforeModelCall", agent, { prompt: "test" })
+    expect(result.skipped).toBe(false)
+  })
+
+  it("onError hook 自身报错应上抛", async () => {
+    const agent = { chat: async () => "", run: async () => ({} as any), getConfig: () => ({} as any) } as any
+
+    const badErrorHandler = plugin({
+      name: "bad-error-handler",
+      hooks: {
+        onError: () => { throw new Error("错误处理器也挂了") },
+      },
+    })
+
+    const pm = new PluginManager([badErrorHandler])
+    await expect(
+      pm.emit("onError", agent, { error: new Error("原始错误") })
+    ).rejects.toThrow("错误处理器也挂了")
+  })
+})
