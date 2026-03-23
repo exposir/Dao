@@ -29,6 +29,7 @@ import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
 import { compileRules } from "../rules.js"
 import { ModelError, ToolError, TimeoutError, CostLimitError } from "./errors.js"
+import { t as i18n } from "./i18n.js"
 import { AbortError } from "../engine.js"
 import type { PluginManager } from "../plugin.js"
 
@@ -116,7 +117,7 @@ function toAITools(
         // confirm 机制
         if (t.confirm) {
           if (!options?.onConfirm) {
-            throw new Error(`工具 "${t.name}" 要求确认执行，但未配置 onConfirm 回调`)
+            throw new Error(i18n("error.toolConfirm", { name: t.name }))
           }
           const confirmed = await options.onConfirm(t.name, params)
           if (!confirmed) {
@@ -219,11 +220,7 @@ export async function runLoop(
   const modelString = options.model ?? globalConfig.defaultModel ?? detectDefaultModel()
 
   if (!options.modelProvider && !modelString) {
-    throw new Error(
-      "未指定模型。请通过 agent({ model: \"provider/model\" }) 或 " +
-      "configure({ defaultModel: \"provider/model\" }) 指定，" +
-      "或设置环境变量（如 DEEPSEEK_API_KEY）让框架自动检测。"
-    )
+    throw new Error(i18n("error.noModel"))
   }
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
@@ -410,7 +407,7 @@ export async function* runLoopStream(
   const modelString = options.model ?? globalConfig.defaultModel ?? detectDefaultModel()
 
   if (!options.modelProvider && !modelString) {
-    throw new Error("未指定模型。")
+    throw new Error(i18n("error.noModelShort"))
   }
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
@@ -588,7 +585,7 @@ export async function runGenerate<T = any>(
   const modelString = options.model ?? globalConfig.defaultModel ?? detectDefaultModel()
 
   if (!options.modelProvider && !modelString) {
-    throw new Error("未指定模型。")
+    throw new Error(i18n("error.noModelShort"))
   }
 
   const model = options.modelProvider ?? await resolveModel(modelString!)

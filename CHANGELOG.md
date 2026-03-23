@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.4.1 (2026-03-23)
+
+### Improvements
+
+- **i18n 实际接入** — 7 个源文件的中文硬编码字符串全部替换为 `t()` 调用，`setLocale("en")` 立即生效
+- **README 重写** — 覆盖 V2.3/V2.4 全部功能，新增多模态、MCP、i18n、telemetry 示例
+- **api.md 更新** — 新增 `MessageInput`、`RunResult.requestId`、`contextWindow.maxMessages`、`maxCostPerRun` 文档
+- **新增文档页** — `docs/multimodal.md`（多模态）、`docs/mcp.md`（MCP 协议）
+- **新增示例** — `examples/multimodal.ts`、`examples/mcp-tools.ts`、`examples/i18n.ts`
+
 ## 2.4.0 (2026-03-23)
 
 ### Features

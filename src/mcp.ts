@@ -8,6 +8,7 @@
  */
 
 import type { ToolInstance, JSONSchema } from "./core/types.js"
+import { t } from "./core/i18n.js"
 
 /** MCP 连接配置 */
 export interface MCPOptions {
@@ -42,9 +43,7 @@ export async function mcpTools(options: MCPOptions): Promise<ToolInstance[]> {
     const mod = await import("@ai-sdk/mcp")
     createMCPClient = mod.createMCPClient
   } catch {
-    throw new Error(
-      "使用 mcpTools() 需要安装 @ai-sdk/mcp：npm install @ai-sdk/mcp"
-    )
+    throw new Error(t("error.mcpNeedDep"))
   }
 
   // 根据配置创建 transport
@@ -64,7 +63,7 @@ export async function mcpTools(options: MCPOptions): Promise<ToolInstance[]> {
       env: options.env,
     }
   } else {
-    throw new Error("mcpTools() 需要指定 url（SSE 模式）或 command（Stdio 模式）")
+    throw new Error(t("error.mcpNeedTransport"))
   }
 
   // 创建 MCP client，获取 tools
@@ -121,9 +120,7 @@ export async function mcpClient(options: MCPOptions): Promise<{
     const mod = await import("@ai-sdk/mcp")
     createMCPClient = mod.createMCPClient
   } catch {
-    throw new Error(
-      "使用 mcpClient() 需要安装 @ai-sdk/mcp：npm install @ai-sdk/mcp"
-    )
+    throw new Error(t("error.mcpClientNeedDep"))
   }
 
   let transport: any
@@ -137,7 +134,7 @@ export async function mcpClient(options: MCPOptions): Promise<{
       env: options.env,
     }
   } else {
-    throw new Error("mcpClient() 需要指定 url 或 command")
+    throw new Error(t("error.mcpClientNeedTransport"))
   }
 
   const client = await createMCPClient({ transport })

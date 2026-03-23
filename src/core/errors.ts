@@ -51,13 +51,15 @@ export class TimeoutError extends DaoError {
   }
 }
 
+import { t } from "./i18n.js"
+
 /** 成本超限错误 */
 export class CostLimitError extends DaoError {
   totalTokens: number
   limit: number
 
   constructor(totalTokens: number, limit: number) {
-    super(`Token 用量 (${totalTokens}) 超过上限 (${limit})`, "COST_LIMIT_ERROR")
+    super(t("error.costLimit", { totalTokens, limit }), "COST_LIMIT_ERROR")
     this.name = "CostLimitError"
     this.totalTokens = totalTokens
     this.limit = limit

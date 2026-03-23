@@ -6,6 +6,7 @@
  */
 
 import type { LanguageModel } from "ai"
+import { t } from "./core/i18n.js"
 
 export interface MockModelOptions {
   /** 响应用完后是否循环，默认 false（抛错） */
@@ -36,7 +37,7 @@ export function mockModel(responses: string[], options?: MockModelOptions): Lang
       if (loop) {
         index = 0
       } else {
-        throw new Error(`mockModel: 预设响应已用完（共 ${responses.length} 条）`)
+        throw new Error(t("error.mockExhausted", { count: responses.length }))
       }
     }
     return responses[index++]

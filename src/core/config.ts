@@ -5,6 +5,7 @@
  */
 
 import type { ConfigOptions } from "./types.js"
+import { t } from "./i18n.js"
 
 /** 全局配置（内部状态） */
 let globalConfig: ConfigOptions = {}
@@ -22,10 +23,10 @@ let globalConfig: ConfigOptions = {}
  */
 export function configure(options: ConfigOptions): void {
   if (options.defaultMaxTurns !== undefined && options.defaultMaxTurns <= 0) {
-    throw new Error("configure(): defaultMaxTurns 必须大于 0")
+    throw new Error(t("error.maxTurns"))
   }
   if (options.defaultModel !== undefined && options.defaultModel.trim() === "") {
-    throw new Error("configure(): defaultModel 不能为空字符串")
+    throw new Error(t("error.emptyModel"))
   }
   globalConfig = { ...globalConfig, ...options }
 }

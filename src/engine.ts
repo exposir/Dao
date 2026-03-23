@@ -18,6 +18,7 @@ import type {
   AgentInstance,
   RunResult,
 } from "./core/types.js"
+import { t } from "./core/i18n.js"
 
 /** 步骤执行结果 */
 export interface StepResult {
@@ -182,7 +183,7 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
   // WaitStep
   if (isWaitStep(step)) {
     if (!onWait) {
-      throw new Error("wait 步骤需要 resume() 支持，请通过 agent 实例调用")
+      throw new Error(t("error.waitNeedResume"))
     }
     // 支持可选超时（确保 setTimeout 句柄始终被清理）
     if (step.timeout && step.timeout > 0) {
@@ -221,7 +222,7 @@ async function executeStep(step: Step, ctx: StepContext, executeTask: ExecuteTas
     return await executeConditional(step, ctx, executeTask, onWait)
   }
 
-  throw new Error(`未知的步骤类型: ${JSON.stringify(step)}`)
+  throw new Error(t("error.unknownStep", { step: JSON.stringify(step) }))
 }
 
 /**

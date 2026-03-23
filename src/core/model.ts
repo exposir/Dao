@@ -6,6 +6,7 @@
  */
 
 import type { ProviderEntry } from "./types.js"
+import { t } from "./i18n.js"
 
 /** 全局 provider 注册表 */
 const PROVIDERS: Record<string, ProviderEntry> = {
@@ -96,17 +97,14 @@ export async function resolveModel(modelString: string) {
   const entry = PROVIDERS[providerName]
   if (!entry) {
     throw new Error(
-      `未知的 provider: "${providerName}"。` +
-      `可用的 provider: ${Object.keys(PROVIDERS).join(", ")}。` +
-      `如需自定义 provider，请使用 registerProvider()。`
+      t("error.unknownProvider", { provider: providerName, available: Object.keys(PROVIDERS).join(", ") })
     )
   }
 
   const apiKey = process.env[entry.envKey]
   if (!apiKey) {
     throw new Error(
-      `缺少环境变量 ${entry.envKey}。` +
-      `请在 .env 文件或环境变量中设置该值。`
+      t("error.missingEnvKey", { envKey: entry.envKey })
     )
   }
 

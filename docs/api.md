@@ -119,18 +119,47 @@ interface AgentOptions {
   /** 可委派的 Agent 列表，自动注入 delegate 工具 */
   delegates?: Record<string, AgentInstance>
 
-  // === 预留扩展点 ===
+  // === V2.3：生产增强 ===
 
-  /** 上下文窗口配置（预留） */
+  /** 上下文窗口配置 */
   contextWindow?: {
-    maxTokens?: number
-    strategy?: "truncate" | "summarize"
+    /** 最大消息数（滑动窗口） */
+    maxMessages?: number
   }
+
+  /** 单次执行的最大 token 数，超限抛 CostLimitError */
+  maxCostPerRun?: number
 
   /** 自定义模型提供者，测试时可注入 mock */
   modelProvider?: LanguageModel
 }
 ```
+
+### 多模态输入 (V2.4)
+
+```typescript
+/** 消息输入，支持纯文本或多模态内容 */
+type MessageInput = string | ContentPart[]
+
+type ContentPart = TextPart | ImagePart | FilePart
+
+interface TextPart {
+  type: "text"
+  text: string
+}
+
+interface ImagePart {
+  type: "image"
+  /** 图片 URL、base64、ArrayBuffer 或 Uint8Array */
+  image: string | URL | ArrayBuffer | Uint8Array
+}
+
+interface FilePart {
+  type: "file"
+  data: string | ArrayBuffer | Uint8Array
+  mediaType: string
+  filename?: string
+}
 
 ### Step 类型
 
@@ -197,17 +226,17 @@ interface StepContext {
 
 ```typescript
 interface AgentInstance {
-  /** 对话模式 */
-  chat(message: string): Promise<string>
+  /** 对话模式（支持文本或多模态输入） */
+  chat(message: MessageInput): Promise<string>
 
   /** 任务模式 */
-  run(task: string): Promise<RunResult>
+  run(task: MessageInput): Promise<RunResult>
 
   /** 流式对话 */
-  chatStream(message: string): AsyncIterable<string>
+  chatStream(message: MessageInput): AsyncIterable<string>
 
   /** 流式任务执行 */
-  runStream(task: string): AsyncIterable<RunEvent>
+  runStream(task: MessageInput): AsyncIterable<RunEvent>
 
   /** 结构化输出任务执行 (V2.2) */
   generate<T>(task: string, options: GenerateOptions<T>): Promise<GenerateResult<T>>
@@ -229,6 +258,8 @@ interface AgentInstance {
 }
 
 interface RunResult {
+  /** 唯一执行 ID，用于链路追踪 (V2.4) */
+  requestId: string
   output: string
   turns: { turn: string; result: any }[]
   usage: { promptTokens: number; completionTokens: number; totalTokens: number }
@@ -687,13 +718,20 @@ export { plugin, logger } from "./plugin"
 export { team } from "./team"
 export { mockModel } from "./mock"
 export { AbortError } from "./engine"
-export { DaoError, ModelError, ToolError, TimeoutError } from "./core/errors"
+export { DaoError, ModelError, ToolError, TimeoutError, CostLimitError } from "./core/errors"
+
+// V2.4 新增
+export { mcpTools, mcpClient } from "./mcp"
+export { telemetryPlugin } from "./telemetry"
+export { setLocale, getLocale, t } from "./core/i18n"
 
 // 类型导出
 export type {
   AgentOptions, AgentInstance, RunResult, RunEvent, TokenUsage,
   GenerateOptions, GenerateResult,
   ToolOptions, ToolInstance, ToolContext, ParamsDef, ParamSpec, JSONSchema,
+  // V2.4 多模态
+  MessageInput, ContentPart, TextPart, ImagePart, FilePart,
   Step, TaskStep, WaitStep, StepContext, ParallelStep, ConditionalStep,
   TeamOptions, TeamInstance, TeamRunResult, TeamRunEvent,
   PluginOptions, PluginInstance, PluginHooks, HookContext,

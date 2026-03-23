@@ -10,37 +10,74 @@ Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。基于 Ver
 - 📈 **渐进式复杂度** — 3 行代码起步，按需扩展
 - 🤖 **开源模型友好** — DeepSeek / Qwen / Kimi 开箱即用
 - 🔌 **插件生态** — 核心精简，能力通过插件扩展
-- 🛡️ **生产可靠** — 重试、超时、错误分类、Fallback 模型
+- 🛡️ **生产可靠** — 重试、超时、错误分类、Fallback 模型、成本上限
 - ✅ **输出校验** — guardrail 代码级校验 + 自动重试
+- 🖼️ **多模态输入** — 图片、文件与文本混合对话
+- 🔗 **MCP 协议** — 一行代码接入 MCP server 工具
+- 🌐 **国际化** — 内置中英文，`setLocale("en")` 切换
+
+## 安装
+
+```bash
+npm install dao-ai
+```
 
 ## 快速开始
 
 ```typescript
-import { agent } from "dao-ai";
+import { agent } from "dao-ai"
 
-const bot = agent({ model: "deepseek/deepseek-chat" });
-await bot.chat("你好");
+const bot = agent({ model: "deepseek/deepseek-chat" })
+await bot.chat("你好")
 ```
 
 ## 示例
 
-### 简单模式（goal + background）
+### 简单模式
 
 ```typescript
 const auditor = agent({
   goal: "找出代码中的 bug 和安全隐患",
   background: "你有 10 年 TypeScript 经验",
   tools: [readFile, listDir],
-});
-await auditor.run("审查 src/ 目录");
+})
+const result = await auditor.run("审查 src/ 目录")
+console.log(result.output)
+console.log(result.requestId) // 唯一执行 ID，便于追踪
 ```
 
-### 专家模式（systemPrompt）
+### 多模态对话
 
 ```typescript
-const bot = agent({
-  systemPrompt: "你是 JSON 格式化专家，只输出合法 JSON",
-});
+const bot = agent({ model: "google/gemini-2.0-flash" })
+
+// 图片 + 文本混合输入
+await bot.chat([
+  { type: "text", text: "这张图片里有什么？" },
+  { type: "image", image: "https://example.com/photo.jpg" },
+])
+
+// 文件分析
+await bot.chat([
+  { type: "text", text: "分析这个 PDF" },
+  { type: "file", data: "https://example.com/report.pdf", mediaType: "application/pdf" },
+])
+```
+
+### MCP 工具接入
+
+```typescript
+import { agent, mcpTools } from "dao-ai"
+
+// 一行接入 MCP server
+const tools = await mcpTools({ url: "http://localhost:3100/sse" })
+const bot = agent({ tools })
+
+// 或使用 Stdio 模式
+const tools = await mcpTools({
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-filesystem", "./"],
+})
 ```
 
 ### 带步骤流程 + 输出校验
@@ -54,7 +91,7 @@ const reviewer = agent({
     { parallel: ["分析前端代码", "分析后端代码"], concurrency: 2 },
     {
       task: "生成审查报告",
-      output: "JSON 格式，包含 severity 和 message 字段",
+      output: "JSON 格式",
       validate: (r) => {
         try { JSON.parse(r); return true }
         catch { return "输出不是合法 JSON" }
@@ -64,57 +101,39 @@ const reviewer = agent({
     { wait: true, reason: "等待用户确认" },
     "根据用户反馈修改报告",
   ],
-});
-
-const promise = reviewer.run("审查 src/ 目录");
-// ... 等待 wait 步骤暂停后
-reviewer.resume({ approved: true });
-await promise;
+})
 ```
 
-### 工具确认机制
-
-```typescript
-const bot = agent({
-  tools: [
-    tool({ name: "deleteFile", confirm: true, ... }),
-  ],
-  onConfirm: async (toolName, params) => {
-    return await ask(`确认执行 ${toolName}?`);
-  },
-});
-```
-
-### 容错配置
+### 容错 + 成本控制
 
 ```typescript
 const bot = agent({
   model: "deepseek/deepseek-chat",
-  fallbackModel: "openai/gpt-4o",     // 主模型出错或超时，自动切换备用模型
-  retry: { maxRetries: 3 },           // 自动重试 + 指数退避
-  timeout: 30000,                     // 30 秒超时
-  maxTokens: 2000,                    // 限制输出长度
-});
+  fallbackModel: "openai/gpt-4o",
+  retry: { maxRetries: 3 },
+  timeout: 30000,
+  maxTokens: 2000,
+  maxCostPerRun: 100000,                    // token 上限
+  contextWindow: { maxMessages: 50 },       // 上下文窗口
+})
 ```
 
-### Agent 委派（无需 team）
+### Agent 委派
 
 ```typescript
-const researcher = agent({ role: "研究员", tools: [search] });
-const writer = agent({ role: "作家" });
-
+const researcher = agent({ role: "研究员", tools: [search] })
+const writer = agent({ role: "作家" })
 const lead = agent({
   role: "项目经理",
   delegates: { researcher, writer },
-});
-// lead 会自动调用 delegate 工具分配任务
-await lead.run("写一篇关于 AI Agent 的文章");
+})
+await lead.run("写一篇关于 AI Agent 的文章")
 ```
 
 ### 多 Agent 团队
 
 ```typescript
-import { agent, team } from "dao-ai";
+import { agent, team } from "dao-ai"
 
 const squad = team({
   members: {
@@ -122,8 +141,8 @@ const squad = team({
     coder: agent({ role: "开发者", tools: [readFile, writeFile] }),
     tester: agent({ role: "测试工程师", tools: [runCommand] }),
   },
-});
-await squad.run("给项目添加用户登录功能");
+})
+await squad.run("给项目添加用户登录功能")
 ```
 
 ### 流式事件
@@ -140,17 +159,38 @@ for await (const event of bot.runStream("分析代码")) {
 }
 ```
 
+### 国际化
+
+```typescript
+import { setLocale } from "dao-ai"
+
+setLocale("en") // 所有内置错误信息和提示切换为英文
+```
+
+### OpenTelemetry 集成
+
+```typescript
+import { configure, telemetryPlugin } from "dao-ai"
+
+configure({
+  globalPlugins: [
+    telemetryPlugin({ serviceName: "my-app", recordContent: true }),
+  ],
+})
+```
+
 ### 错误处理
 
 ```typescript
-import { ModelError, ToolError, TimeoutError } from "dao-ai";
+import { ModelError, ToolError, TimeoutError, CostLimitError } from "dao-ai"
 
 try {
-  await bot.run("任务");
+  await bot.run("任务")
 } catch (e) {
-  if (e instanceof TimeoutError) console.log("超时");
-  if (e instanceof ModelError)   console.log("模型错误");
-  if (e instanceof ToolError)    console.log(`工具 ${e.toolName} 失败`);
+  if (e instanceof TimeoutError)    console.log("超时")
+  if (e instanceof ModelError)      console.log("模型错误")
+  if (e instanceof ToolError)       console.log(`工具 ${e.toolName} 失败`)
+  if (e instanceof CostLimitError)  console.log(`Token 超限: ${e.totalTokens}`)
 }
 ```
 
@@ -173,10 +213,10 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 | **V1.1** | 重试 + 超时 + 错误分类 + maxTokens + 并发    | ✅      |
 | **V1.2** | goal/background + expected_output + guardrail| ✅      |
 | **V2.0** | confirm + 流式事件 + fallback + delegates    | ✅      |
-| **V2.1** | 契约审计 + 测试覆盖 + 文档对齐            | ✅      |
-| **V2.2** | 结构化输出 + 可测试性 + mock              | ✅      |
-| **V2.3** | 上下文管理 + 成本控制 + 流式 steps        | 📋      |
-| **V2.4** | 多模态 + MCP + 可观测                     | 📋      |
+| **V2.1** | 契约审计 + 测试覆盖 + 文档对齐              | ✅      |
+| **V2.2** | 结构化输出 + 可测试性 + mock                 | ✅      |
+| **V2.3** | 上下文管理 + 成本控制 + 流式 steps           | ✅      |
+| **V2.4** | 多模态 + MCP + 可观测 + 国际化               | ✅      |
 
 ## 文档
 
