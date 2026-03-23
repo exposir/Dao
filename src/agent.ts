@@ -390,6 +390,9 @@ export function agent(options: AgentOptions): AgentInstance {
         delegates: options.delegates ? { ...options.delegates } : undefined,
       }
     },
+
+    // V2.5: 运行时共享状态
+    state: new Map<string, any>(),
   }
 
   return instance

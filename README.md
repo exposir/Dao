@@ -217,6 +217,7 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 | **V2.2** | 结构化输出 + 可测试性 + mock                 | ✅      |
 | **V2.3** | 上下文管理 + 成本控制 + 流式 steps           | ✅      |
 | **V2.4** | 多模态 + MCP + 可观测 + 国际化               | ✅      |
+| **V2.5** | Plugin 可变性 + workspace + ask + state      | ✅      |
 
 ## 文档
 

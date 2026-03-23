@@ -18,6 +18,7 @@ function mockMember(role: string): AgentInstance {
     generate: vi.fn(),
     clearMemory: vi.fn(),
     getConfig: vi.fn(() => ({ role, model: "deepseek/deepseek-chat" })),
+    state: new Map(),
   }
 }
 

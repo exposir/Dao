@@ -159,6 +159,11 @@ export interface StepContext {
   agent: AgentInstance
   /** 手动中止执行 */
   abort: (reason?: string) => void
+  /**
+   * 步骤间共享工作区（V2.5）
+   * 用于步骤间传递结构化数据，避免靠 lastResult 字符串传递
+   */
+  workspace: Map<string, any>
 }
 
 // ============================================================
@@ -247,6 +252,11 @@ export interface AgentOptions {
   maxCostPerRun?: number
   /** 可委派的 Agent 列表，自动注入 delegate 工具 */
   delegates?: Record<string, AgentInstance>
+  /**
+   * 中途提问回调（V2.5）
+   * 提供后自动注入 ask 工具，Agent 可在运行中主动向用户提问
+   */
+  onAsk?: (question: string) => Promise<string>
 }
 
 /** agent() 返回的实例 */
@@ -267,6 +277,11 @@ export interface AgentInstance {
   clearMemory(): void
   /** 获取当前配置 */
   getConfig(): AgentOptions
+  /**
+   * 运行时共享状态（V2.5）
+   * Agent 实例生命周期内多次 run() 共享，进程重启后丢失
+   */
+  state: Map<string, any>
 }
 
 /** 执行结果 */
@@ -386,7 +401,18 @@ export interface PluginOptions {
 /** 插件 hooks 定义 */
 export interface PluginHooks {
   beforeInput?: (ctx: HookContext & { message: string }) => void | Promise<void>
-  beforeModelCall?: (ctx: HookContext & { prompt: string }) => void | Promise<void>
+  /**
+   * 模型调用前（V2.5 增强）
+   * ctx.systemPrompt 和 ctx.messages 是可写的，
+   * 插件可以修改 system prompt、注入/替换/压缩消息
+   */
+  beforeModelCall?: (ctx: HookContext & {
+    prompt: string
+    /** 可写：当前 system prompt */
+    systemPrompt: string
+    /** 可写：即将发送给模型的消息列表 */
+    messages: any[]
+  }) => void | Promise<void>
   afterModelCall?: (ctx: HookContext & { response: any }) => void | Promise<void>
   beforeToolCall?: (ctx: HookContext & { tool: string; params: any }) => void | Promise<void>
   afterToolCall?: (ctx: HookContext & { tool: string; result: any }) => void | Promise<void>

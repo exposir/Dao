@@ -45,7 +45,7 @@ describe("telemetryPlugin()", () => {
     }
     // 应该不抛错
     await plugin.hooks!.beforeInput!({ ...ctx, message: "test" })
-    await plugin.hooks!.beforeModelCall!({ ...ctx, prompt: "test" })
+    await plugin.hooks!.beforeModelCall!({ ...ctx, prompt: "test", systemPrompt: "test", messages: [] })
     await plugin.hooks!.afterModelCall!({ ...ctx, response: {} })
     await plugin.hooks!.onComplete!({ ...ctx, result: { requestId: "x", output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 } })
     await plugin.hooks!.onError!({ ...ctx, error: new Error("test") })

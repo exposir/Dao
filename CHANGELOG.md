@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.5.0 (2026-03-23)
+
+### Features
+
+- **Agent 共享状态** — `agent.state: Map<string, any>` 实例级运行时状态，多次 `run()` 间共享
+- **StepContext.workspace** — `workspace: Map<string, any>` 步骤间传递结构化数据，替代纯文本 `lastResult`
+- **Plugin 可变性** — `beforeModelCall` hook 暴露可写的 `systemPrompt` 和 `messages`，支持记忆注入、上下文压缩
+- **Mid-run Clarification** — `onAsk` 回调 + 内置 `ask` 工具，Agent 运行中可主动向用户提问
+
 ## 2.4.1 (2026-03-23)
 
 ### Improvements

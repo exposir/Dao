@@ -159,6 +159,12 @@ const messages: Record<string, Record<Locale, string>> = {
     en: "[Tool call skipped by plugin]",
   },
 
+  // Ask 工具 (V2.5)
+  "tool.ask.desc": {
+    zh: "向用户提问，等待用户回答后继续执行",
+    en: "Ask the user a question and wait for their response",
+  },
+
   // Delegate
   "delegate.desc": {
     zh: "将任务委派给{name}",

@@ -224,11 +224,11 @@ export async function runLoop(
   }
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
-  const systemPrompt = buildSystemPrompt(options)
+  let systemPrompt = buildSystemPrompt(options)
   // tools 在 abortRef 之后初始化（见下方）
   let tools: ToolSet | undefined
 
-  const messages: ModelMessage[] = [
+  let messages: ModelMessage[] = [
     ...messageHistory,
     { role: "user", content: toMessageContent(task) } as ModelMessage,
   ]
@@ -245,17 +245,35 @@ export async function runLoop(
   // 工具中止引用：工具调用 ctx.abort() 时会设置 reason 并触发 controller.abort()
   const abortRef: AbortRef = { reason: null, controller }
 
-  // 触发 beforeModelCall hook
+  // 触发 beforeModelCall hook（V2.5：插件可修改 systemPrompt 和 messages）
   if (pm) {
-    const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
+    const hookCtx = { prompt: systemPrompt, systemPrompt, messages: [...messages] }
+    const { skipped } = await pm.emit("beforeModelCall", agentInstance, hookCtx)
     if (skipped) {
       if (timeoutId) clearTimeout(timeoutId)
       return { requestId: crypto.randomUUID(), output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
     }
+    // 插件可能修改了 systemPrompt 或 messages
+    systemPrompt = hookCtx.systemPrompt
+    messages = hookCtx.messages
+  }
+
+  // V2.5: 如果提供了 onAsk，注入内置 ask 工具
+  const effectiveTools: ToolInstance[] = [...(options.tools ?? [])]
+  if (options.onAsk) {
+    const onAsk = options.onAsk
+    effectiveTools.push({
+      __type: "tool",
+      name: "ask",
+      description: i18n("tool.ask.desc"),
+      schema: { type: "object", properties: { question: { type: "string", description: "要向用户提出的问题" } }, required: ["question"] },
+      execute: async (params: any) => onAsk(params.question),
+      confirm: false,
+    })
   }
 
   // 初始化 tools（需要 abortRef）
-  tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, undefined, abortRef) : undefined
+  tools = effectiveTools.length ? toAITools(effectiveTools, agentInstance, pm, options, undefined, abortRef) : undefined
 
   try {
     const result = await generateText({
@@ -411,7 +429,7 @@ export async function* runLoopStream(
   }
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
-  const systemPrompt = buildSystemPrompt(options)
+  let systemPrompt = buildSystemPrompt(options)
 
   // tool_call 事件收集器
   const toolCallEvents: RunEvent[] = []
@@ -423,7 +441,7 @@ export async function* runLoopStream(
   // tools 在 abortRef 之后初始化（见下方）
   let tools: ToolSet | undefined
 
-  const messages: ModelMessage[] = [
+  let messages: ModelMessage[] = [
     ...messageHistory,
     { role: "user", content: toMessageContent(task) } as ModelMessage,
   ]
@@ -438,20 +456,37 @@ export async function* runLoopStream(
   // 工具中止引用
   const abortRef: AbortRef = { reason: null, controller }
 
-  // 触发 beforeModelCall hook
+  // 触发 beforeModelCall hook（V2.5：插件可修改 systemPrompt 和 messages）
   if (pm) {
-    const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
+    const hookCtx = { prompt: systemPrompt, systemPrompt, messages: [...messages] }
+    const { skipped } = await pm.emit("beforeModelCall", agentInstance, hookCtx)
     if (skipped) {
       if (timeoutId) clearTimeout(timeoutId)
       yield { type: "done", data: null }
       return
     }
+    systemPrompt = hookCtx.systemPrompt
+    messages = hookCtx.messages
   }
 
   let hasYieldedText = false
 
+  // V2.5: 如果提供了 onAsk，注入内置 ask 工具
+  const effectiveTools: ToolInstance[] = [...(options.tools ?? [])]
+  if (options.onAsk) {
+    const onAsk = options.onAsk
+    effectiveTools.push({
+      __type: "tool",
+      name: "ask",
+      description: i18n("tool.ask.desc"),
+      schema: { type: "object", properties: { question: { type: "string", description: "要向用户提出的问题" } }, required: ["question"] },
+      execute: async (params: any) => onAsk(params.question),
+      confirm: false,
+    })
+  }
+
   // 初始化 tools（需要 abortRef）
-  tools = options.tools?.length ? toAITools(options.tools, agentInstance, pm, options, onToolCall, abortRef) : undefined
+  tools = effectiveTools.length ? toAITools(effectiveTools, agentInstance, pm, options, onToolCall, abortRef) : undefined
 
   try {
     const result = streamText({
@@ -589,7 +624,7 @@ export async function runGenerate<T = any>(
   }
 
   const model = options.modelProvider ?? await resolveModel(modelString!)
-  const systemPrompt = buildSystemPrompt(options)
+  let systemPrompt = buildSystemPrompt(options)
   const startTime = Date.now()
 
   // 超时控制
@@ -600,13 +635,15 @@ export async function runGenerate<T = any>(
     timeoutId = setTimeout(() => controller!.abort(), options.timeout)
   }
 
-  // 触发 beforeModelCall hook
+  // 触发 beforeModelCall hook（V2.5：插件可修改 systemPrompt）
   if (pm) {
-    const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
+    const hookCtx = { prompt: systemPrompt, systemPrompt, messages: [] as any[] }
+    const { skipped } = await pm.emit("beforeModelCall", agentInstance, hookCtx)
     if (skipped) {
       if (timeoutId) clearTimeout(timeoutId)
       return { object: {} as T, usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
     }
+    systemPrompt = hookCtx.systemPrompt
   }
 
   let resolvedSchema = generateOptions.schema

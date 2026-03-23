@@ -22,6 +22,7 @@ function mockAgent(): AgentInstance {
     generate: vi.fn(),
     clearMemory: vi.fn(),
     getConfig: vi.fn(() => ({})),
+    state: new Map(),
   }
 }
 

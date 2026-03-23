@@ -55,13 +55,15 @@ export async function runSteps(
   const history: StepResult[] = []
   let lastResult: any = initialResult ?? null
 
+  const workspace = new Map<string, any>()
   const ctx: StepContext = {
     lastResult: null,
     history: [],
     agent,
     abort: (reason?: string) => {
-      throw new AbortError(reason ?? "步骤执行被中止")
+      throw new AbortError(reason ?? t("error.abort"))
     },
+    workspace,
   }
 
   for (let i = 0; i < steps.length; i++) {
@@ -113,13 +115,15 @@ export async function* runStepsStream(
   const history: StepResult[] = []
   let lastResult: any = initialResult ?? null
 
+  const workspace = new Map<string, any>()
   const ctx: StepContext = {
     lastResult: null,
     history: [],
     agent,
     abort: (reason?: string) => {
-      throw new AbortError(reason ?? "步骤执行被中止")
+      throw new AbortError(reason ?? t("error.abort"))
     },
+    workspace,
   }
 
   for (let i = 0; i < steps.length; i++) {
