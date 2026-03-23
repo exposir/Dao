@@ -380,13 +380,13 @@ export async function runLoop(
 
     if (isTimeout) {
       throw new TimeoutError(
-        `模型调用超时（${options.timeout}ms）`,
+        i18n("error.timeout", { ms: options.timeout }),
         options.timeout!,
       )
     }
 
     throw new ModelError(
-      `模型调用失败：${err.message}`,
+      i18n("error.modelFail", { message: err.message }),
       err,
     )
   }

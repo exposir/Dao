@@ -123,16 +123,36 @@ const messages: Record<string, Record<Locale, string>> = {
 
   // Logger
   "logger.input": {
-    zh: "[输入]",
-    en: "[Input]",
+    zh: "📥 输入",
+    en: "📥 Input",
   },
-  "logger.output": {
-    zh: "[输出]",
-    en: "[Output]",
+  "logger.modelCall": {
+    zh: "🤖 调用模型...",
+    en: "🤖 Calling model...",
+  },
+  "logger.modelReturn": {
+    zh: "✅ 模型返回",
+    en: "✅ Model returned",
+  },
+  "logger.toolCall": {
+    zh: "🔧 调用工具",
+    en: "🔧 Tool call",
+  },
+  "logger.toolResult": {
+    zh: "✅ 工具结果",
+    en: "✅ Tool result",
+  },
+  "logger.complete": {
+    zh: "🏁 完成",
+    en: "🏁 Complete",
+  },
+  "logger.tokens": {
+    zh: "📊 tokens",
+    en: "📊 tokens",
   },
   "logger.error": {
-    zh: "[错误]",
-    en: "[Error]",
+    zh: "❌ 错误",
+    en: "❌ Error",
   },
   "logger.toolSkipped": {
     zh: "[工具调用被插件跳过]",

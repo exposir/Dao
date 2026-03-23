@@ -46,6 +46,8 @@ export default defineConfig({
           items: [
             { text: "插件系统", link: "/plugins" },
             { text: "团队协作", link: "/team" },
+            { text: "多模态输入", link: "/multimodal" },
+            { text: "MCP 协议", link: "/mcp" },
           ],
         },
       ],

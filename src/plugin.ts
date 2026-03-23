@@ -12,6 +12,7 @@ import type {
   HookContext,
   AgentInstance,
 } from "./core/types.js"
+import { t } from "./core/i18n.js"
 
 /**
  * 创建一个插件实例
@@ -132,31 +133,31 @@ export function logger(options?: {
     name: "logger",
     hooks: {
       beforeInput: (ctx) => {
-        console.log(`${prefix} 📥 输入: ${ctx.message}`)
+        console.log(`${prefix} ${t("logger.input")}: ${ctx.message}`)
       },
       beforeModelCall: () => {
-        console.log(`${prefix} 🤖 调用模型...`)
+        console.log(`${prefix} ${t("logger.modelCall")}`)
       },
       afterModelCall: (ctx) => {
         const resp = ctx.response
         const text = typeof resp === "string" ? resp : JSON.stringify(resp)?.slice(0, 100)
-        console.log(`${prefix} ✅ 模型返回: ${text}...`)
+        console.log(`${prefix} ${t("logger.modelReturn")}: ${text}...`)
       },
       beforeToolCall: (ctx) => {
-        console.log(`${prefix} 🔧 调用工具: ${ctx.tool}`)
+        console.log(`${prefix} ${t("logger.toolCall")}: ${ctx.tool}`)
       },
       afterToolCall: (ctx) => {
-        console.log(`${prefix} ✅ 工具结果: ${JSON.stringify(ctx.result)?.slice(0, 100)}`)
+        console.log(`${prefix} ${t("logger.toolResult")}: ${JSON.stringify(ctx.result)?.slice(0, 100)}`)
       },
       onComplete: (ctx) => {
         const result = ctx.result
-        console.log(`${prefix} 🏁 完成 (${result.duration}ms)`)
+        console.log(`${prefix} ${t("logger.complete")} (${result.duration}ms)`)
         if (showUsage && result.usage) {
-          console.log(`${prefix} 📊 tokens: ${result.usage.totalTokens}`)
+          console.log(`${prefix} ${t("logger.tokens")}: ${result.usage.totalTokens}`)
         }
       },
       onError: (ctx) => {
-        console.error(`${prefix} ❌ 错误: ${ctx.error.message}`)
+        console.error(`${prefix} ${t("logger.error")}: ${ctx.error.message}`)
       },
     },
   })
