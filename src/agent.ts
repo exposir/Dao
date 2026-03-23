@@ -7,7 +7,7 @@
 import type { ModelMessage } from "ai"
 import type { AgentOptions, AgentInstance, RunResult, RunEvent, ToolInstance, GenerateOptions, GenerateResult } from "./core/types.js"
 import { runLoop, runLoopStream, runGenerate } from "./core/loop.js"
-import { runSteps } from "./engine.js"
+import { runSteps, runStepsStream } from "./engine.js"
 import { PluginManager } from "./plugin.js"
 import { tool } from "./tool.js"
 import { getGlobalConfig } from "./core/config.js"
@@ -84,6 +84,14 @@ export function agent(options: AgentOptions): AgentInstance {
   // 对话历史（memory 用）
   let messageHistory: ModelMessage[] = []
 
+  // 上下文窗口裁剪（memory + contextWindow 时生效）
+  function trimHistory(): void {
+    const cw = options.contextWindow
+    if (!cw?.maxMessages || messageHistory.length <= cw.maxMessages) return
+    // 滑动窗口：保留最近 maxMessages 条
+    messageHistory = messageHistory.slice(-cw.maxMessages)
+  }
+
   // 插件管理器：合并全局插件 + 实例插件
   const globalCfg = getGlobalConfig()
   const allPlugins = [
@@ -117,6 +125,7 @@ export function agent(options: AgentOptions): AgentInstance {
             { role: "user", content: message },
             { role: "assistant", content: result.output },
           )
+          trimHistory()
         }
 
         await pm.emit("onComplete", instance, { result })
@@ -228,6 +237,7 @@ export function agent(options: AgentOptions): AgentInstance {
             { role: "user", content: message },
             { role: "assistant", content: fullText },
           )
+          trimHistory()
         }
 
         await pm.emit("onComplete", instance, { result: { output: fullText, duration: Date.now() - startTime, turns: [], usage: streamUsage } })
@@ -247,7 +257,7 @@ export function agent(options: AgentOptions): AgentInstance {
         // 如果有 steps，走 steps 引擎
         if (options.steps?.length) {
           const stepUsages: { promptTokens: number; completionTokens: number; totalTokens: number }[] = []
-          const events: RunEvent[] = []
+          const stepResults: { step: any; result: any }[] = []
 
           const executeTaskLocal = async (subTask: string) => {
             const res = await runLoop(options, subTask, [], instance, pm)
@@ -257,28 +267,24 @@ export function agent(options: AgentOptions): AgentInstance {
 
           const onWaitLocal = () => new Promise<any>(resolve => waitResolves.add(resolve))
 
-          const stepResults = await runSteps(
+          // 流式步骤：每步完成立即 yield 事件，不缓冲
+          const gen = runStepsStream(
             options.steps,
             instance,
             executeTaskLocal,
-            task, // 将 task 作为初始上下文
-            // onStepStart
-            (step, index) => {
-              const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
-              events.push({ type: "step_start", data: { step: stepName, index } })
-            },
-            // onStepEnd
-            async (step, index, result) => {
-              const stepName = typeof step === "string" ? step : (step as any).task ?? JSON.stringify(step)
-              events.push({ type: "step_end", data: { step: stepName, index, result } })
-              await pm.emit("afterStep", instance, { step, result })
-            },
+            task,
             onWaitLocal,
           )
 
-          // 发所有事件
-          for (const event of events) {
-            yield event
+          for await (const { event, stepResult } of gen) {
+            // 实时发出 step_start / step_end 事件
+            if (event.type === "step_start") {
+              yield { type: "step_start" as const, data: { step: event.step, index: event.index } }
+            } else {
+              yield { type: "step_end" as const, data: { step: event.step, index: event.index, result: event.result } }
+              stepResults.push(stepResult)
+              await pm.emit("afterStep", instance, { step: stepResult.step, result: stepResult.result })
+            }
           }
 
           const lastResult = stepResults[stepResults.length - 1]

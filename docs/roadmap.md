@@ -75,13 +75,13 @@
 - [x] **测试支持**：提供专用的 mock adapter 方便给 Agent 编写单元测试
 
 
-## V2.3 📋 生产就绪
+## V2.3 ✅ 生产就绪
 
 > 上下文管理 + 流式 steps + 成本控制
 
-- [ ] 上下文窗口管理（token 计数 + 自动截断/摘要，防止 `memory: true` 长对话爆 token）
-- [ ] 流式 steps（`runStream()` + steps 逐步流式输出，不再等全部完成）
-- [ ] 成本上限（`maxCostPerRun`）
+- [x] 上下文窗口管理（`contextWindow.maxMessages` 滑动窗口裁剪，防止 `memory: true` 长对话爆 token）
+- [x] 流式 steps（`runStepsStream()` 逐步实时输出，不再缓冲）
+- [x] 成本上限（`maxCostPerRun` token 总量上限，超限抛 `CostLimitError`）
 
 ## V2.4 📋 生态扩展
 

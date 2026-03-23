@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.3.0 (2026-03-23)
+
+### Features
+
+- **agent**: 上下文窗口管理 — `contextWindow: { maxMessages }` 滑动窗口裁剪，防止 `memory: true` 长对话无限增长
+- **engine**: 流式 Steps — `runStepsStream()` async generator，`runStream()` + steps 现在逐步实时输出事件，不再缓冲
+- **loop**: 成本上限 — `maxCostPerRun` 设置单次执行的 token 总量上限，超限抛 `CostLimitError`
+- **errors**: 新增 `CostLimitError` 错误类型，包含 `totalTokens` 和 `limit` 字段
+
+### Tests
+
+- 新增 11 个测试（122 → 133）
+  - `context-window.test.ts`: 6 tests（maxMessages 裁剪、默认不裁剪、memory:false 兼容、clearMemory、chatStream 裁剪、getConfig）
+  - `cost-limit.test.ts`: 5 tests（超限抛错、未超限正常、未设置不检查、错误字段、run() 兼容）
+
 ## 2.2.4 (2026-03-23)
 
 ### Bug Fixes

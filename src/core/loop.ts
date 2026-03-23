@@ -25,7 +25,7 @@ import type {
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
 import { compileRules } from "../rules.js"
-import { ModelError, ToolError, TimeoutError } from "./errors.js"
+import { ModelError, ToolError, TimeoutError, CostLimitError } from "./errors.js"
 import { AbortError } from "../engine.js"
 import type { PluginManager } from "../plugin.js"
 
@@ -249,6 +249,11 @@ export async function runLoop(
 
     const usage = extractUsage(result.totalUsage)
 
+    // 成本上限检查
+    if (options.maxCostPerRun && usage.totalTokens > options.maxCostPerRun) {
+      throw new CostLimitError(usage.totalTokens, options.maxCostPerRun)
+    }
+
     // 触发 afterModelCall hook
     if (pm) {
       await pm.emit("afterModelCall", agentInstance, {
@@ -274,6 +279,9 @@ export async function runLoop(
 
     // ctx.abort() 抛出的 AbortError 需要优先穿透，不走超时/fallback 逻辑
     if (err instanceof AbortError) throw err
+
+    // CostLimitError 直接穿透，不走 fallback
+    if (err instanceof CostLimitError) throw err
 
     // 工具内部调用了 ctx.abort()，通过 AbortController 中断了 generateText
     // AI SDK 会抛出原生 AbortError（name === "AbortError"），需要检查 abortRef 来区分
@@ -450,6 +458,11 @@ export async function* runLoopStream(
     const totalUsage = await result.totalUsage
     const usage = extractUsage(totalUsage)
 
+    // 成本上限检查
+    if (options.maxCostPerRun && usage.totalTokens > options.maxCostPerRun) {
+      throw new CostLimitError(usage.totalTokens, options.maxCostPerRun)
+    }
+
     // 触发 afterModelCall hook（传真实输出和用量）
     if (pm) {
       await pm.emit("afterModelCall", agentInstance, {
@@ -463,6 +476,9 @@ export async function* runLoopStream(
     if (timeoutId) clearTimeout(timeoutId)
 
     if (err instanceof AbortError) throw err
+
+    // CostLimitError 直接穿透
+    if (err instanceof CostLimitError) throw err
 
     // 工具中止
     if (abortRef.reason) {

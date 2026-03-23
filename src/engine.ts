@@ -90,6 +90,75 @@ export async function runSteps(
   return history
 }
 
+/** 步骤事件（流式输出用） */
+export interface StepEvent {
+  type: "step_start" | "step_end"
+  step: string
+  index: number
+  result?: any
+}
+
+/**
+ * 执行步骤序列（流式版本）
+ * 每完成一步立即 yield 事件，不缓冲
+ */
+export async function* runStepsStream(
+  steps: Step[],
+  agent: AgentInstance,
+  executeTask: ExecuteTaskFn,
+  initialResult?: any,
+  onWait?: () => Promise<any>,
+): AsyncGenerator<{ event: StepEvent; stepResult: StepResult }, StepResult[]> {
+  const history: StepResult[] = []
+  let lastResult: any = initialResult ?? null
+
+  const ctx: StepContext = {
+    lastResult: null,
+    history: [],
+    agent,
+    abort: (reason?: string) => {
+      throw new AbortError(reason ?? "步骤执行被中止")
+    },
+  }
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    const stepName = typeof step === "string" ? step : (step as any).task ?? safeStringify(step)
+
+    yield {
+      event: { type: "step_start", step: stepName, index: i },
+      stepResult: { step, result: undefined },
+    }
+
+    // 更新上下文
+    ctx.lastResult = lastResult
+    ctx.history = history.map(h => ({ step: h.step, result: h.result }))
+
+    try {
+      const result = await executeStep(step, ctx, executeTask, onWait)
+      lastResult = result
+      const sr = { step, result }
+      history.push(sr)
+      yield {
+        event: { type: "step_end", step: stepName, index: i, result },
+        stepResult: sr,
+      }
+    } catch (err) {
+      if (err instanceof AbortError) throw err
+      const errorResult = { error: err instanceof Error ? err.message : String(err) }
+      lastResult = errorResult
+      const sr = { step, result: errorResult }
+      history.push(sr)
+      yield {
+        event: { type: "step_end", step: stepName, index: i, result: errorResult },
+        stepResult: sr,
+      }
+    }
+  }
+
+  return history
+}
+
 /**
  * 执行单个步骤
  */

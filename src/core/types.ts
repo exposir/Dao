@@ -200,13 +200,17 @@ export interface AgentOptions {
   onConfirm?: (toolName: string, params: any) => Promise<boolean>
   /** 备用模型，主模型失败后自动切换 */
   fallbackModel?: string
-  /** 上下文窗口配置 @planned V2.3 */
+  /** 上下文窗口配置（memory: true 时生效） */
   contextWindow?: {
-    maxTokens?: number
-    strategy?: "truncate" | "summarize"
+    /** 最多保留最近 N 条消息，超出的按先进先出丢弃 */
+    maxMessages?: number
+    /** 裁剪策略，默认 "sliding"（滑动窗口） */
+    strategy?: "sliding"
   }
   /** 自定义模型提供者（测试注入 mock） */
   modelProvider?: LanguageModel
+  /** 单次执行的最大 token 总量上限，超限抛 CostLimitError */
+  maxCostPerRun?: number
   /** 可委派的 Agent 列表，自动注入 delegate 工具 */
   delegates?: Record<string, AgentInstance>
 }
