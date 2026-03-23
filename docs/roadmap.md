@@ -80,7 +80,7 @@
 > 上下文管理 + 流式 steps + 成本控制
 
 - [x] 上下文窗口管理（`contextWindow.maxMessages` 滑动窗口裁剪，防止 `memory: true` 长对话爆 token）
-- [x] 流式 steps（`runStepsStream()` 逐步实时输出，不再缓冲）
+- [x] 流式 steps（`runStepsStream()` 按步骤逐个输出事件，单步内仍为缓冲式执行）
 - [x] 成本上限（`maxCostPerRun` token 总量上限，超限抛 `CostLimitError`）
 
 ## V2.4 ✅ 生态扩展
@@ -104,13 +104,13 @@
 - [x] **Mid-run Clarification**：Agent Loop 内置 `ask` 工具，运行中可主动暂停向用户提问
 - [x] **Agent 共享状态**：`AgentInstance` 增加 `state: Map<string, any>` 可读写的运行时状态
 
-## V3.0 📋 平台化
+## V3.0 ⏸️ 暂缓
 
-> Per-run 隔离 + 动态工具 + API 破坏性变更
+> 以下功能经评估后暂缓，待真实用户需求驱动再决定：
 
-- [ ] `resume()` per-run token（`bot.run()` 返回 `{ promise, runId }`，`bot.resume(runId, data)` 精确恢复单个 run）
-- [ ] Team per-run 状态隔离（memberResults 绑定到 run，而不是 team 实例）
-- [ ] **动态工具加载**：支持运行时增减工具（`agent.addTool()` / `agent.removeTool()`），同步重构 `team({ lead })` 不再重建 lead 实例，直接注入 delegate 工具
+- `resume()` per-run token — 仅高并发服务端场景需要，大多数用法是顺序调用
+- Team per-run 状态隔离 — 同上，顺序调用不需要
+- 动态工具加载 — 可通过重新创建 agent 实例解决，不是刚需
 
 ---
 
@@ -121,11 +121,19 @@
 - **RAG** — 通过 `tool()` 接入向量数据库即可，不内置检索增强
 - **Agent 通信协议** — `team()` + `delegates` 已满足多 Agent 协作，不引入额外协议层
 - **沙箱 / 安全隔离** — 工具执行沙箱化过于重量级，安全由使用者自行控制
-- **长时运行 / 状态持久化** — 跑数小时、断点恢复、checkpoint 等机制过重，不符合轻量定位
+- **长时运行 / 状态持久化** — 跑数小时、断点恢复、checkpoint 等机制过重，不符合轻量定位（含 Agent 持久化 save/load）
+- **上下文自动摘要** — 需要额外模型调用，增加成本和延迟，用户更需要自主控制（可通过 V2.5 plugin 可变性自行实现）
+- **响应缓存** — 开发工具，不是框架核心能力，可通过 plugin 实现
+- **步骤级重试** — V0.5 已支持 steps `retry`，无需重复
 
 ## ✅ 设计决策（By Design）
 
 > 以下行为是有意的工程取舍，不是 bug：
 
-- **`team({ lead })` 重建 lead** — lead 需要注入 delegate 工具，而工具列表是 agent 创建时固定的，复用原实例需要动态注入，引入更多复杂度（V3.0 引入动态工具后将重构此行为）
+- **`team({ lead })` 重建 lead** — lead 需要注入 delegate 工具，而工具列表是 agent 创建时固定的，复用原实例需要动态注入，引入更多复杂度
 - **`getConfig()` 非完整深拷贝** — tools/plugins 含函数引用和闭包状态，`structuredClone` 无法处理；顶层副本 + rules/steps 数组复制已覆盖 99% 误操作
+- **`resume()` 广播式恢复** — 同一 agent 多个 `wait` 挂起时，`resume()` 会全部恢复。per-run 精确恢复属于 V3.0 范畴
+- **`contextWindow.maxMessages` 是消息数滑窗** — 不是按 token 截断，也没有自动摘要策略；token 级裁剪可通过 V2.5 plugin 可变性（`beforeModelCall` 修改 `messages`）自行实现
+- **`maxCostPerRun` 是 token 总量上限** — 不是按真实模型价格计费，不包含 provider 级成本估算；如需真实计费可通过 plugin `afterModelCall` 自行统计
+- **`runStream() + steps` 是步骤级流式** — 能实时看到 `step_start/step_end`，但单步内部的模型输出仍为缓冲式；真逐 token 流式需重构 engine 与 loop 的交互方式
+

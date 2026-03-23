@@ -132,6 +132,9 @@ interface AgentOptions {
 
   /** 自定义模型提供者，测试时可注入 mock */
   modelProvider?: LanguageModel
+
+  /** 中途提问回调 (V2.5)，提供后自动注入 ask 工具 */
+  onAsk?: (question: string) => Promise<string>
 }
 ```
 
@@ -219,6 +222,9 @@ interface StepContext {
 
   /** 手动中止执行 */
   abort: (reason?: string) => void
+
+  /** 步骤间共享工作区 (V2.5) */
+  workspace: Map<string, any>
 }
 ```
 
@@ -255,6 +261,9 @@ interface AgentInstance {
 
   /** 获取当前配置 */
   getConfig(): AgentOptions
+
+  /** 运行时共享状态 (V2.5) */
+  state: Map<string, any>
 }
 
 interface RunResult {
@@ -600,7 +609,13 @@ interface PluginOptions {
     beforeInput?: (ctx: HookContext & { message: string }) => void | Promise<void>
 
     /** 模型调用前 */
-    beforeModelCall?: (ctx: HookContext & { prompt: string }) => void | Promise<void>
+    beforeModelCall?: (ctx: HookContext & {
+      prompt: string
+      /** 可写：当前 system prompt (V2.5) */
+      systemPrompt: string
+      /** 可写：即将发送给模型的消息列表 (V2.5) */
+      messages: any[]
+    }) => void | Promise<void>
 
     /** 模型调用后 */
     afterModelCall?: (ctx: HookContext & { response: any }) => void | Promise<void>

@@ -37,6 +37,9 @@ steps: ["了解项目结构", "逐文件审查", "生成报告"]
 
 > 第一步没有 lastResult，直接发送步骤文本。TaskStep 同样会注入 lastResult。
 
+> [!TIP]
+> **V2.5 workspace**：除了 `lastResult`（纯文本），步骤还可以通过 `ctx.workspace: Map<string, any>` 共享结构化数据，避免信息失真。
+
 **完成判断**：每个步骤复用 agent 自身的 `maxTurns`（由 `AgentOptions` 配置），没有独立的步骤级 maxTurns。引擎通过两种方式判断步骤完成：
 1. LLM 返回纯文本且没有工具调用 → 认为完成
 2. 达到 agent 的 `maxTurns` → AI SDK 停止循环

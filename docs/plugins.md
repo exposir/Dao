@@ -19,7 +19,7 @@ agent.run("任务")
   │
   ├─ [Agent Loop 开始]
   │   │
-  │   ├─ beforeModelCall(ctx)        ← ctx.prompt
+  │   ├─ beforeModelCall(ctx)        ← ctx.prompt, ctx.systemPrompt(可写), ctx.messages(可写)
   │   │
   │   ├─ [模型调用]
   │   │
@@ -95,7 +95,28 @@ function logger() {
 }
 ```
 
-### 4.2 Token 计数插件
+### 4.2 Prompt 注入插件 (V2.5)
+
+```typescript
+import { plugin } from "dao-ai"
+
+// V2.5: beforeModelCall 可修改 systemPrompt 和 messages
+function ragInjector(vectorDb: any) {
+  return plugin({
+    name: "rag-injector",
+    hooks: {
+      beforeModelCall: async (ctx) => {
+        // 根据用户输入检索相关上下文
+        const docs = await vectorDb.search(ctx.prompt)
+        // 直接修改 system prompt
+        ctx.systemPrompt += `\n\n参考资料：\n${docs.join("\n")}`
+      },
+    },
+  })
+}
+```
+
+### 4.3 Token 计数插件
 
 ```typescript
 const tokenCounter = plugin({

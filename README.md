@@ -1,86 +1,73 @@
-# Dao（道）
+[English](./README.en.md) | 中文
 
-> 大道至简的 AI Agent 框架
+<div align="center">
 
-Dao 是一个直觉优先、渐进式的 TypeScript AI Agent 框架。基于 Vercel AI SDK 构建。
+# Dao
 
-## 特性
+**大道至简的 AI Agent 框架**
 
-- 🎯 **描述角色，而非配置机器** — 用 `role`/`tools`/`steps`/`rules` 描述你的 Agent
-- 📈 **渐进式复杂度** — 3 行代码起步，按需扩展
-- 🤖 **开源模型友好** — DeepSeek / Qwen / Kimi 开箱即用
-- 🔌 **插件生态** — 核心精简，能力通过插件扩展
-- 🛡️ **生产可靠** — 重试、超时、错误分类、Fallback 模型、成本上限
-- ✅ **输出校验** — guardrail 代码级校验 + 自动重试
-- 🖼️ **多模态输入** — 图片、文件与文本混合对话
-- 🔗 **MCP 协议** — 一行代码接入 MCP server 工具
-- 🌐 **国际化** — 内置中英文，`setLocale("en")` 切换
+[![npm version](https://img.shields.io/npm/v/dao-ai.svg?style=flat-square&color=cb3837)](https://www.npmjs.com/package/dao-ai)
+[![license](https://img.shields.io/npm/l/dao-ai.svg?style=flat-square&color=blue)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![test](https://img.shields.io/badge/tests-162%20passed-brightgreen?style=flat-square)](./tests)
 
-## 安装
+基于 Vercel AI SDK 构建的 TypeScript AI Agent 框架。<br>
+DeepSeek / Qwen / Gemini / GPT 开箱即用，中文优先，开源模型友好。
+
+```
+chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
+ 简单 ─────────────────────────────────────────────────────────► 复杂
+```
+
+每一层只加一两行代码，复杂度线性增长，不跳跃。
+
+</div>
+
+---
+
+## 为什么选 Dao？
+
+|                  | Dao                               | LangChain.js   | Vercel AI SDK  |
+| ---------------- | --------------------------------- | -------------- | -------------- |
+| **上手**         | 3 行，无 Zod                      | 多层抽象 + Zod | 自行编排 + Zod |
+| **多 Agent**     | 内置 `team()` + `delegates`       | 需 LangGraph   | 无             |
+| **步骤引擎**     | 串行/并行/条件/等待/校验          | 需 LangGraph   | 无             |
+| **生产容错**     | 重试 + 超时 + fallback + 成本上限 | 部分           | 自行实现       |
+| **多模态 + MCP** | 内置                              | 额外配置       | 部分           |
+| **插件 + 交互**  | 8 hook + prompt 可变 + `onAsk`    | Callbacks      | 无             |
+| **共享状态**     | `state` + `workspace`             | 无             | 无             |
+| **中文**         | i18n + 开源模型优先               | 英文为主       | 英文为主       |
+
+> **定位**：LangChain 大而全，AI SDK 灵活底层，**Dao 追求开箱即用 + 渐进复杂**。
+
+---
+
+## 30 秒上手
+
+**1. 最简对话** — 安装 + 3 行代码，直接和模型对话：
 
 ```bash
 npm install dao-ai
 ```
 
-## 快速开始
-
 ```typescript
-import { agent } from "dao-ai"
+import { agent } from "dao-ai";
 
-const bot = agent({ model: "deepseek/deepseek-chat" })
-await bot.chat("你好")
+const bot = agent({ model: "deepseek/deepseek-chat" });
+const answer = await bot.chat("你好");
 ```
 
-## 示例
-
-### 简单模式
+**2. 加工具** — 给 Agent 能力，让它能读文件、执行命令：
 
 ```typescript
 const auditor = agent({
-  goal: "找出代码中的 bug 和安全隐患",
-  background: "你有 10 年 TypeScript 经验",
+  goal: "找出代码中的 bug",
   tools: [readFile, listDir],
-})
-const result = await auditor.run("审查 src/ 目录")
-console.log(result.output)
-console.log(result.requestId) // 唯一执行 ID，便于追踪
+});
+const result = await auditor.run("审查 src/ 目录");
 ```
 
-### 多模态对话
-
-```typescript
-const bot = agent({ model: "google/gemini-2.0-flash" })
-
-// 图片 + 文本混合输入
-await bot.chat([
-  { type: "text", text: "这张图片里有什么？" },
-  { type: "image", image: "https://example.com/photo.jpg" },
-])
-
-// 文件分析
-await bot.chat([
-  { type: "text", text: "分析这个 PDF" },
-  { type: "file", data: "https://example.com/report.pdf", mediaType: "application/pdf" },
-])
-```
-
-### MCP 工具接入
-
-```typescript
-import { agent, mcpTools } from "dao-ai"
-
-// 一行接入 MCP server
-const tools = await mcpTools({ url: "http://localhost:3100/sse" })
-const bot = agent({ tools })
-
-// 或使用 Stdio 模式
-const tools = await mcpTools({
-  command: "npx",
-  args: ["-y", "@modelcontextprotocol/server-filesystem", "./"],
-})
-```
-
-### 带步骤流程 + 输出校验
+**3. 加步骤** — 定义执行流程，支持串行、并行、条件分支：
 
 ```typescript
 const reviewer = agent({
@@ -88,140 +75,128 @@ const reviewer = agent({
   tools: [readFile, listDir],
   steps: [
     "了解项目结构",
-    { parallel: ["分析前端代码", "分析后端代码"], concurrency: 2 },
-    {
-      task: "生成审查报告",
-      output: "JSON 格式",
-      validate: (r) => {
-        try { JSON.parse(r); return true }
-        catch { return "输出不是合法 JSON" }
-      },
-      maxRetries: 2,
-    },
-    { wait: true, reason: "等待用户确认" },
-    "根据用户反馈修改报告",
+    { parallel: ["分析前端代码", "分析后端代码"] },
+    "生成审查报告",
   ],
-})
+});
 ```
 
-### 容错 + 成本控制
+**4. 完整功能** — 团队协作 + 规则约束 + 插件 + 容错，按需叠加：
 
 ```typescript
-const bot = agent({
-  model: "deepseek/deepseek-chat",
-  fallbackModel: "openai/gpt-4o",
-  retry: { maxRetries: 3 },
-  timeout: 30000,
-  maxTokens: 2000,
-  maxCostPerRun: 100000,                    // token 上限
-  contextWindow: { maxMessages: 50 },       // 上下文窗口
-})
-```
-
-### Agent 委派
-
-```typescript
-const researcher = agent({ role: "研究员", tools: [search] })
-const writer = agent({ role: "作家" })
-const lead = agent({
-  role: "项目经理",
-  delegates: { researcher, writer },
-})
-await lead.run("写一篇关于 AI Agent 的文章")
-```
-
-### 多 Agent 团队
-
-```typescript
-import { agent, team } from "dao-ai"
+import { agent, team, plugin } from "dao-ai";
 
 const squad = team({
   members: {
-    planner: agent({ role: "架构师" }),
-    coder: agent({ role: "开发者", tools: [readFile, writeFile] }),
-    tester: agent({ role: "测试工程师", tools: [runCommand] }),
+    researcher: agent({ role: "研究员", tools: [search] }),
+    writer: agent({
+      role: "作家",
+      rules: { reject: ["不要编造数据"] },
+      memory: true,
+      fallbackModel: "openai/gpt-4o",
+      maxCostPerRun: 100000,
+    }),
   },
-})
-await squad.run("给项目添加用户登录功能")
+  plugins: [logger()],
+});
+await squad.run("写一篇关于 AI Agent 的深度报告");
 ```
 
-### 流式事件
+---
+
+## 核心能力
+
+<details>
+<summary><b>🖼️ 多模态 + MCP</b></summary>
 
 ```typescript
-for await (const event of bot.runStream("分析代码")) {
-  switch (event.type) {
-    case "step_start": console.log(`▶ 步骤 ${event.data.index}`); break
-    case "step_end":   console.log(`✓ 完成`); break
-    case "tool_call":  console.log(`🔧 ${event.data.tool}`); break
-    case "text":       process.stdout.write(event.data); break
-    case "done":       console.log("完成"); break
-  }
-}
+// 图片 + 文本
+await bot.chat([
+  { type: "text", text: "这张图片里有什么？" },
+  { type: "image", image: "https://example.com/photo.jpg" },
+]);
+
+// 一行接入 MCP server
+const tools = await mcpTools({ url: "http://localhost:3100/sse" });
+const bot = agent({ tools });
 ```
 
-### 国际化
+</details>
+
+<details>
+<summary><b>💬 运行中提问 + 共享状态</b></summary>
 
 ```typescript
-import { setLocale } from "dao-ai"
+// Agent 运行中主动暂停向用户提问
+const bot = agent({
+  role: "代码审查员",
+  tools: [readFile],
+  onAsk: async (question) => await readline.question(question),
+});
 
-setLocale("en") // 所有内置错误信息和提示切换为英文
+// 多次 run 之间共享状态
+bot.state.set("todos", []);
+await bot.run("第一个任务");
 ```
 
-### OpenTelemetry 集成
+</details>
+
+<details>
+<summary><b>🔌 插件系统</b></summary>
 
 ```typescript
-import { configure, telemetryPlugin } from "dao-ai"
+import { plugin } from "dao-ai";
+
+// 8 个生命周期 hook，V2.5 支持修改 prompt 和消息
+const injector = plugin({
+  name: "rag-injector",
+  hooks: {
+    beforeModelCall: async (ctx) => {
+      const docs = await vectorDb.search(ctx.prompt);
+      ctx.systemPrompt += `\n\n参考资料：\n${docs.join("\n")}`;
+    },
+  },
+});
+```
+
+</details>
+
+<details>
+<summary><b>🌐 国际化 + 可观测</b></summary>
+
+```typescript
+import { setLocale, configure, telemetryPlugin } from "dao-ai";
+
+setLocale("en"); // 内置错误信息切换为英文
 
 configure({
   globalPlugins: [
     telemetryPlugin({ serviceName: "my-app", recordContent: true }),
   ],
-})
+});
 ```
 
-### 错误处理
+</details>
 
-```typescript
-import { ModelError, ToolError, TimeoutError, CostLimitError } from "dao-ai"
-
-try {
-  await bot.run("任务")
-} catch (e) {
-  if (e instanceof TimeoutError)    console.log("超时")
-  if (e instanceof ModelError)      console.log("模型错误")
-  if (e instanceof ToolError)       console.log(`工具 ${e.toolName} 失败`)
-  if (e instanceof CostLimitError)  console.log(`Token 超限: ${e.totalTokens}`)
-}
-```
-
-## 设计理念
-
-```
-chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
- 简单 ──────────────────────────────────────────────────────────► 复杂
-```
-
-每一层只加一两行代码，复杂度线性增长。
+---
 
 ## 路线图
 
-| 阶段     | 内容                                         | 状态    |
-| -------- | -------------------------------------------- | ------- |
-| **V0.1** | agent + tool + Agent Loop + memory           | ✅      |
-| **V0.5** | steps + rules + parallel + if + wait/resume  | ✅      |
-| **V1.0** | team + plugins + 内置工具 + 文档             | ✅      |
-| **V1.1** | 重试 + 超时 + 错误分类 + maxTokens + 并发    | ✅      |
-| **V1.2** | goal/background + expected_output + guardrail| ✅      |
-| **V2.0** | confirm + 流式事件 + fallback + delegates    | ✅      |
-| **V2.1** | 契约审计 + 测试覆盖 + 文档对齐              | ✅      |
-| **V2.2** | 结构化输出 + 可测试性 + mock                 | ✅      |
-| **V2.3** | 上下文管理 + 成本控制 + 流式 steps           | ✅      |
-| **V2.4** | 多模态 + MCP + 可观测 + 国际化               | ✅      |
-| **V2.5** | Plugin 可变性 + workspace + ask + state      | ✅      |
+| 阶段     | 内容                                                       | 状态 |
+| -------- | ---------------------------------------------------------- | :--: |
+| **V0.1** | agent + tool + loop + memory                               |  ✅  |
+| **V0.5** | steps + rules + parallel + if/wait                         |  ✅  |
+| **V1.x** | team + plugins + 内置工具 + 重试/超时/错误分类 + guardrail |  ✅  |
+| **V2.x** | confirm + 流式 + fallback + delegates + 结构化输出 + mock  |  ✅  |
+| **V2.3** | 上下文管理 + 成本控制                                      |  ✅  |
+| **V2.4** | 多模态 + MCP + OTel + 国际化                               |  ✅  |
+| **V2.5** | Plugin 可变性 + workspace + ask + state                    |  ✅  |
+
+[完整路线图 →](./docs/roadmap.md)
 
 ## 文档
 
-详细文档见 [docs/](./docs/index.md)。
+[完整文档 →](./docs/index.md) · [API 参考 →](./docs/api.md) · [设计原则 →](./docs/principles.md)
 
 ## License
 
