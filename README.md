@@ -42,18 +42,38 @@ chat()  →  tools  →  steps  →  rules  →  memory  →  team  →  plugins
 
 ---
 
-## 30 秒上手
-
-**1. 最简对话** — 安装 + 3 行代码，直接和模型对话：
+## 快速开始
 
 ```bash
-npm install dao-ai
+mkdir my-agent && cd my-agent
+npm init -y
+npm install dao-ai dotenv
+echo 'DEEPSEEK_API_KEY=your_key' > .env
 ```
 
 ```typescript
-import { agent } from "dao-ai";
+// index.ts
+import "dotenv/config"
+import { agent } from "dao-ai"
 
-const bot = agent({ model: "deepseek/deepseek-chat" });
+const bot = agent({ model: "deepseek/deepseek-chat" })
+console.log(await bot.chat("你好"))
+```
+
+```bash
+npx tsx index.ts
+```
+
+---
+
+## 渐进式示例
+
+**1. 最简对话** — 3 行代码，直接和模型对话：
+
+```typescript
+import { agent } from "dao-ai"
+
+const bot = agent({ model: "deepseek/deepseek-chat" })
 const answer = await bot.chat("你好");
 ```
 

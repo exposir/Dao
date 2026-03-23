@@ -5,7 +5,7 @@
  */
 
 import "dotenv/config"
-import { agent, tool } from "../src/index.js"
+import { agent, tool } from "dao-ai"
 
 // 1. 最简用法：纯聊天
 async function testChat() {

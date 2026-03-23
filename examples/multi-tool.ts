@@ -6,7 +6,7 @@
  */
 
 import "dotenv/config"
-import { agent, tool } from "../src/index.js"
+import { agent, tool } from "dao-ai"
 import fs from "fs"
 
 // 工具：获取当前时间

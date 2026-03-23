@@ -6,7 +6,7 @@
  */
 
 import "dotenv/config"
-import { agent } from "../src/index.js"
+import { agent } from "dao-ai"
 
 async function main() {
   const translator = agent({

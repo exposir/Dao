@@ -42,13 +42,33 @@ Each layer adds just 1–2 lines of code. Complexity grows linearly, never jumps
 
 ---
 
-## Get Started in 30 Seconds
-
-**1. Basic chat** — Install + 3 lines, talk to a model:
+## Quick Start
 
 ```bash
-npm install dao-ai
+mkdir my-agent && cd my-agent
+npm init -y
+npm install dao-ai dotenv
+echo 'DEEPSEEK_API_KEY=your_key' > .env
 ```
+
+```typescript
+// index.ts
+import "dotenv/config"
+import { agent } from "dao-ai"
+
+const bot = agent({ model: "deepseek/deepseek-chat" })
+console.log(await bot.chat("Hello"))
+```
+
+```bash
+npx tsx index.ts
+```
+
+---
+
+## Progressive Examples
+
+**1. Basic chat** — 3 lines, talk to a model:
 
 ```typescript
 import { agent } from "dao-ai"
