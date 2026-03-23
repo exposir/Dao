@@ -1,8 +1,20 @@
 # 工具系统设计文档
 
+## 设计理念
+
+Dao 的工具系统采用**三层策略**，框架不绑定特定工具生态：
+
+| 层级 | 方式 | 说明 |
+|------|------|------|
+| **自定义工具** | `tool()` | 用户用工厂函数定义任意工具，简写语法，不依赖 Zod。这是框架的主要扩展机制 — RAG、数据库、API 调用全通过 `tool()` 接入 |
+| **内置工具** | `dao-ai/tools` | 5 个最常用的 coding 工具（读、写、浏览、执行、搜索），开箱即用，可选导入 |
+| **生态桥接** | `mcpTools()` | 一行代码接入任何 MCP server 的工具，复用社区生态，不重复造轮子 |
+
+> **核心原则**：框架只负责工具的定义、调度和拦截（confirm / beforeToolCall），具体能力由用户或 MCP 生态提供。RAG、沙箱等不内置，因为 `tool()` 足够灵活。
+
 ---
 
-## 1. 工具定义
+## 工具定义
 
 Dao 统一使用 `tool()` 函数定义工具，传入一个对象。
 
@@ -56,7 +68,7 @@ const deleteFiles = tool({
 
 ---
 
-## 2. 参数转换机制
+## 参数转换机制
 
 ### 简写 → JSON Schema
 
@@ -117,7 +129,7 @@ function paramsToJsonSchema(params: ParamsDef): JSONSchema {
 
 ---
 
-## 3. 工具执行安全
+## 工具执行安全
 
 ### rules.reject
 
@@ -159,18 +171,18 @@ const bot = agent({
 
 ---
 
-## 4. 内置工具
+## 内置工具
 
 ```typescript
 import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
 ```
 
-| 工具 | 描述 | confirm |
-|---|---|---|
-| `readFile` | 读取文件 | false |
-| `writeFile` | 写入文件 | false |
-| `listDir` | 列出目录 | false |
-| `runCommand` | 执行命令 | false |
-| `search` | 搜索文件内容 | false |
+| 工具 | 功能 | 参数 |
+|------|------|------|
+| `readFile` | 读取文件内容 | `path`、`encoding`（可选） |
+| `writeFile` | 创建或覆盖文件 | `path`、`content` |
+| `listDir` | 递归列出目录结构 | `path`、`depth`（可选） |
+| `runCommand` | 执行 shell 命令 | `command`、`cwd`（可选） |
+| `search` | 按关键词搜索文件内容 | `query`、`path`（可选） |
 
-> 内置工具默认不开启 confirm。高风险操作建议通过 `onConfirm` 回调或插件的 `beforeToolCall` + `skip()` 实现审批。
+> 内置工具默认不开启 `confirm`。生产环境建议对 `writeFile`、`runCommand` 等高风险工具配合 `onConfirm` 回调或 `beforeToolCall` 插件 hook 实现审批。
