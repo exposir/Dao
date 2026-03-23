@@ -11,7 +11,7 @@ function mockAgent(): AgentInstance {
   return {
     chat: vi.fn(async (msg: string) => `回复: ${msg}`),
     run: vi.fn(async (task: string) => ({
-      output: `完成: ${task}`,
+      requestId: "test", output: `完成: ${task}`,
       turns: [],
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       duration: 0,
@@ -28,7 +28,7 @@ function mockAgent(): AgentInstance {
 // mock executeTask（模拟 agent.ts 传入的回调，直接走 runLoop 跳过 steps）
 function mockExecuteTask(task: string): Promise<RunResult> {
   return Promise.resolve({
-    output: `完成: ${task}`,
+    requestId: "test", output: `完成: ${task}`,
     turns: [],
     usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
     duration: 0,
@@ -136,7 +136,7 @@ describe("parallel 步骤部分失败 (Promise.allSettled)", () => {
         throw new Error("子步骤执行失败")
       }
       return {
-        output: `完成: ${task}`,
+        requestId: "test", output: `完成: ${task}`,
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,
@@ -166,7 +166,7 @@ describe("lastResult 注入", () => {
     const capturingExecuteTask = async (task: string): Promise<RunResult> => {
       capturedPrompts.push(task)
       return {
-        output: `完成: ${task.slice(0, 20)}`,
+        requestId: "test", output: `完成: ${task.slice(0, 20)}`,
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,
@@ -188,7 +188,7 @@ describe("lastResult 注入", () => {
     const capturingExecuteTask = async (task: string): Promise<RunResult> => {
       capturedPrompts.push(task)
       return {
-        output: `完成: ${task.slice(0, 20)}`,
+        requestId: "test", output: `完成: ${task.slice(0, 20)}`,
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,
@@ -217,7 +217,7 @@ describe("单步失败继续执行", () => {
         throw new Error("第二步爆了")
       }
       return {
-        output: `完成: ${task.slice(0, 10)}`,
+        requestId: "test", output: `完成: ${task.slice(0, 10)}`,
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,
@@ -256,7 +256,7 @@ describe("TaskStep validate 重试", () => {
     const executeTask = async (task: string): Promise<RunResult> => {
       attempt++
       return {
-        output: attempt >= 2 ? "valid-json" : "bad-output",
+        requestId: "test", output: attempt >= 2 ? "valid-json" : "bad-output",
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,
@@ -283,7 +283,7 @@ describe("TaskStep validate 重试", () => {
       prompts.push(task)
       attempt++
       return {
-        output: attempt >= 2 ? "correct" : "wrong-answer",
+        requestId: "test", output: attempt >= 2 ? "correct" : "wrong-answer",
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,
@@ -312,7 +312,7 @@ describe("ConditionalStep 条件判断失败", () => {
         throw new Error("网络超时")
       }
       return {
-        output: `完成: ${task.slice(0, 20)}`,
+        requestId: "test", output: `完成: ${task.slice(0, 20)}`,
         turns: [],
         usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
         duration: 0,

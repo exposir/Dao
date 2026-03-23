@@ -15,6 +15,9 @@ export { DaoError, ModelError, ToolError, TimeoutError, CostLimitError } from ".
 export { plugin, logger } from "./plugin.js"
 export { team } from "./team.js"
 export { mockModel } from "./mock.js"
+export { mcpTools, mcpClient } from "./mcp.js"
+export { telemetryPlugin } from "./telemetry.js"
+export { setLocale, getLocale, t } from "./core/i18n.js"
 
 // 类型导出
 export type {
@@ -33,6 +36,12 @@ export type {
   ParamsDef,
   ParamSpec,
   JSONSchema,
+  // 多模态
+  MessageInput,
+  ContentPart,
+  TextPart,
+  ImagePart,
+  FilePart,
   // Step
   Step,
   TaskStep,

@@ -11,6 +11,7 @@
 
 import { generateText, generateObject, streamText, stepCountIs, jsonSchema } from "ai"
 import type { ModelMessage, ToolSet } from "ai"
+import crypto from "node:crypto"
 import type {
   AgentOptions,
   AgentInstance,
@@ -21,6 +22,8 @@ import type {
   TokenUsage,
   GenerateOptions,
   GenerateResult,
+  MessageInput,
+  ContentPart,
 } from "./types.js"
 import { resolveModel, detectDefaultModel } from "./model.js"
 import { getGlobalConfig } from "./config.js"
@@ -43,6 +46,39 @@ function extractUsage(raw: any): TokenUsage {
     ? raw.outputTokens?.total ?? 0
     : raw.outputTokens ?? raw.completionTokens ?? 0
   return { promptTokens: input, completionTokens: output, totalTokens: input + output }
+}
+
+/**
+ * 将 MessageInput 转换为 AI SDK 消息内容格式
+ * - string → 纯文本字符串
+ * - ContentPart[] → AI SDK content parts 数组
+ */
+function toMessageContent(input: MessageInput): string | Array<any> {
+  if (typeof input === "string") return input
+  return input.map(part => {
+    switch (part.type) {
+      case "text":
+        return { type: "text", text: part.text }
+      case "image":
+        return { type: "image", image: part.image }
+      case "file":
+        return {
+          type: "file",
+          data: part.data,
+          mediaType: part.mediaType,
+          ...(part.filename ? { filename: part.filename } : {}),
+        }
+    }
+  })
+}
+
+/** 从 MessageInput 中提取纯文本（用于日志、插件等场景） */
+function extractText(input: MessageInput): string {
+  if (typeof input === "string") return input
+  return input
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map(p => p.text)
+    .join("\n")
 }
 
 /** 工具中止引用，用于从工具内部中止 Agent Loop */
@@ -173,7 +209,7 @@ function buildSystemPrompt(options: AgentOptions): string {
  */
 export async function runLoop(
   options: AgentOptions,
-  task: string,
+  task: MessageInput,
   messageHistory: ModelMessage[],
   agentInstance: AgentInstance,
   pm?: PluginManager,
@@ -197,7 +233,7 @@ export async function runLoop(
 
   const messages: ModelMessage[] = [
     ...messageHistory,
-    { role: "user", content: task },
+    { role: "user", content: toMessageContent(task) } as ModelMessage,
   ]
 
   const startTime = Date.now()
@@ -217,7 +253,7 @@ export async function runLoop(
     const { skipped } = await pm.emit("beforeModelCall", agentInstance, { prompt: systemPrompt })
     if (skipped) {
       if (timeoutId) clearTimeout(timeoutId)
-      return { output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
+      return { requestId: crypto.randomUUID(), output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 }
     }
   }
 
@@ -269,6 +305,7 @@ export async function runLoop(
     })) ?? []
 
     return {
+      requestId: crypto.randomUUID(),
       output: result.text,
       turns: turnResults,
       usage,
@@ -331,6 +368,7 @@ export async function runLoop(
         })) ?? []
 
         return {
+          requestId: crypto.randomUUID(),
           output: fallbackResult.text,
           turns: turnResults,
           usage: fallbackUsage,
@@ -362,7 +400,7 @@ export async function runLoop(
  */
 export async function* runLoopStream(
   options: AgentOptions,
-  task: string,
+  task: MessageInput,
   messageHistory: ModelMessage[],
   agentInstance: AgentInstance,
   pm?: PluginManager,
@@ -390,7 +428,7 @@ export async function* runLoopStream(
 
   const messages: ModelMessage[] = [
     ...messageHistory,
-    { role: "user", content: task },
+    { role: "user", content: toMessageContent(task) } as ModelMessage,
   ]
 
   // AbortController：同时用于超时控制和工具中止

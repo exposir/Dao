@@ -1,6 +1,6 @@
 {
   "name": "dao-ai",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Dao（道）— 大道至简的 AI Agent 框架",
   "type": "module",
   "main": "./dist/index.js",
@@ -58,6 +58,7 @@
     "@ai-sdk/alibaba": "^0.1.0",
     "@ai-sdk/anthropic": "^2.0.0",
     "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/mcp": "^0.1.0",
     "@ai-sdk/moonshotai": "^0.1.0",
     "@ai-sdk/zhipu": "^0.1.0"
   },
@@ -75,6 +76,9 @@
       "optional": true
     },
     "@ai-sdk/zhipu": {
+      "optional": true
+    },
+    "@ai-sdk/mcp": {
       "optional": true
     }
   },

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.4.0 (2026-03-23)
+
+### Features
+
+- **agent**: 多模态输入 — `chat()`/`run()`/`chatStream()`/`runStream()` 支持 `MessageInput`（`string | ContentPart[]`），可传入文本、图片、文件混合内容
+- **mcp**: MCP 协议支持 — `mcpTools()` / `mcpClient()` 桥接外部 MCP server 工具（`@ai-sdk/mcp` 可选依赖）
+- **loop**: `RunResult.requestId` — 每次执行生成唯一 UUID，便于链路追踪
+- **telemetry**: `telemetryPlugin()` — OpenTelemetry 集成插件，注入 span/trace（`@opentelemetry/api` 可选依赖）
+- **i18n**: 国际化支持 — `setLocale("en")`/`t(key)` 切换中英文，覆盖所有内置字符串
+
+### Types
+
+- 新增：`MessageInput`、`ContentPart`、`TextPart`、`ImagePart`、`FilePart`
+- `RunResult` 新增 `requestId: string` 字段
+- `AgentInstance` 方法签名更新为 `MessageInput` 参数
+
 ## 2.3.0 (2026-03-23)
 
 ### Features

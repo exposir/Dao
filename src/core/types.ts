@@ -67,6 +67,40 @@ export interface JSONSchema {
 }
 
 // ============================================================
+// 1.5 多模态内容类型
+// ============================================================
+
+/** 文本内容 */
+export interface TextPart {
+  type: "text"
+  text: string
+}
+
+/** 图片内容（支持 URL、base64、Buffer） */
+export interface ImagePart {
+  type: "image"
+  image: string | URL | ArrayBuffer | Uint8Array
+}
+
+/** 文件内容（PDF、音频等） */
+export interface FilePart {
+  type: "file"
+  data: string | ArrayBuffer | Uint8Array
+  mediaType: string
+  filename?: string
+}
+
+/** 内容片段联合类型 */
+export type ContentPart = TextPart | ImagePart | FilePart
+
+/**
+ * 消息输入类型
+ * - string: 纯文本（向后兼容）
+ * - ContentPart[]: 多模态内容（文本 + 图片 + 文件）
+ */
+export type MessageInput = string | ContentPart[]
+
+// ============================================================
 // 2. 步骤类型
 // ============================================================
 
@@ -217,16 +251,16 @@ export interface AgentOptions {
 
 /** agent() 返回的实例 */
 export interface AgentInstance {
-  /** 对话模式：单轮问答，保持上下文 */
-  chat(message: string): Promise<string>
-  /** 任务模式：执行任务直到完成 */
-  run(task: string): Promise<RunResult>
+  /** 对话模式：单轮问答，保持上下文。支持多模态输入 */
+  chat(message: MessageInput): Promise<string>
+  /** 任务模式：执行任务直到完成。支持多模态输入 */
+  run(task: MessageInput): Promise<RunResult>
   /** 结构化输出：返回类型安全的 JSON 对象 */
   generate<T = any>(task: string, options: GenerateOptions<T>): Promise<GenerateResult<T>>
-  /** 流式对话 */
-  chatStream(message: string): AsyncIterable<string>
-  /** 流式任务执行 */
-  runStream(task: string): AsyncIterable<RunEvent>
+  /** 流式对话。支持多模态输入 */
+  chatStream(message: MessageInput): AsyncIterable<string>
+  /** 流式任务执行。支持多模态输入 */
+  runStream(task: MessageInput): AsyncIterable<RunEvent>
   /** 恢复被 wait 步骤暂停的执行，可传入数据供后续步骤使用 */
   resume(data?: any): void
   /** 清除记忆 */
@@ -237,6 +271,8 @@ export interface AgentInstance {
 
 /** 执行结果 */
 export interface RunResult {
+  /** 唯一执行 ID，用于链路追踪 */
+  requestId: string
   /** 最终输出文本 */
   output: string
   /** 模型调用轮次记录 */

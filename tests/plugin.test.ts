@@ -10,7 +10,7 @@ import type { AgentInstance, PluginInstance } from "../src/core/types.js"
 function mockAgent(): AgentInstance {
   return {
     chat: vi.fn(async () => "mock"),
-    run: vi.fn(async () => ({ output: "mock", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 })),
+    run: vi.fn(async () => ({ requestId: "test", output: "mock", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 })),
     chatStream: vi.fn(async function* () { yield "mock" }),
     runStream: vi.fn(async function* () {}),
     resume: vi.fn(),
@@ -209,7 +209,7 @@ describe("store 共享机制", () => {
     await pm.emit("beforeInput", agent, { message: "1" })
     await pm.emit("beforeInput", agent, { message: "2" })
     await pm.emit("beforeInput", agent, { message: "3" })
-    await pm.emit("onComplete", agent, { result: { output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 } })
+    await pm.emit("onComplete", agent, { result: { requestId: "test", output: "", turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 } })
 
     expect(finalCount).toBe(3)
   })

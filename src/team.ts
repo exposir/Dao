@@ -13,6 +13,8 @@ import type {
   AgentInstance,
   RunResult,
 } from "./core/types.js"
+import type { ModelMessage } from "ai"
+import crypto from "node:crypto"
 import { tool } from "./tool.js"
 
 /** 安全深拷贝，防止 BigInt / 循环引用导致 JSON.parse(JSON.stringify(...)) 崩溃 */
@@ -101,6 +103,7 @@ export function team(options: TeamOptions): TeamInstance {
              }
           }
           const res: RunResult = {
+             requestId: crypto.randomUUID(),
              output: fullOutput,
              turns: [],
              usage: lastUsage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 },

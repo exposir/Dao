@@ -83,15 +83,15 @@
 - [x] 流式 steps（`runStepsStream()` 逐步实时输出，不再缓冲）
 - [x] 成本上限（`maxCostPerRun` token 总量上限，超限抛 `CostLimitError`）
 
-## V2.4 📋 生态扩展
+## V2.4 ✅ 生态扩展
 
 > 多模态 + MCP + 可观测
 
-- [ ] 多模态输入（图片/文件作为消息内容，支持 Gemini / GPT-4o / Claude）
-- [ ] MCP 协议支持
-- [ ] 结构化日志 + 链路追踪（`RunResult.requestId`）
-- [ ] OpenTelemetry 集成（可选依赖）
-- [ ] 国际化（内置 prompt 和错误信息支持英文，方便海外用户）
+- [x] 多模态输入（`MessageInput` 支持 text/image/file 混合内容）
+- [x] MCP 协议支持（`mcpTools()` / `mcpClient()` 桥接 MCP server）
+- [x] 结构化日志 + 链路追踪（`RunResult.requestId` UUID）
+- [x] OpenTelemetry 集成（`telemetryPlugin()` 可选依赖）
+- [x] 国际化（`setLocale("en")` / `t(key)` 中英文切换）
 
 > **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。
 

@@ -5,7 +5,8 @@
  */
 
 import type { ModelMessage } from "ai"
-import type { AgentOptions, AgentInstance, RunResult, RunEvent, ToolInstance, GenerateOptions, GenerateResult } from "./core/types.js"
+import crypto from "node:crypto"
+import type { AgentOptions, AgentInstance, RunResult, RunEvent, ToolInstance, GenerateOptions, GenerateResult, MessageInput } from "./core/types.js"
 import { runLoop, runLoopStream, runGenerate } from "./core/loop.js"
 import { runSteps, runStepsStream } from "./engine.js"
 import { PluginManager } from "./plugin.js"
@@ -92,6 +93,18 @@ export function agent(options: AgentOptions): AgentInstance {
     messageHistory = messageHistory.slice(-cw.maxMessages)
   }
 
+  /** 将 MessageInput 转为存储在 memory 中的内容格式 */
+  function toMemoryContent(input: MessageInput): string | Array<any> {
+    if (typeof input === "string") return input
+    return input.map(part => {
+      switch (part.type) {
+        case "text": return { type: "text", text: part.text }
+        case "image": return { type: "image", image: part.image }
+        case "file": return { type: "file", data: part.data, mediaType: part.mediaType }
+      }
+    })
+  }
+
   // 插件管理器：合并全局插件 + 实例插件
   const globalCfg = getGlobalConfig()
   const allPlugins = [
@@ -112,7 +125,7 @@ export function agent(options: AgentOptions): AgentInstance {
   const waitResolves = new Set<(data?: any) => void>()
 
   const instance: AgentInstance = {
-    async chat(message: string): Promise<string> {
+    async chat(message: MessageInput): Promise<string> {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message })
 
@@ -122,7 +135,7 @@ export function agent(options: AgentOptions): AgentInstance {
         // 如果开启了记忆，保存对话历史
         if (options.memory) {
           messageHistory.push(
-            { role: "user", content: message },
+            { role: "user", content: toMemoryContent(message) } as ModelMessage,
             { role: "assistant", content: result.output },
           )
           trimHistory()
@@ -137,7 +150,7 @@ export function agent(options: AgentOptions): AgentInstance {
       }
     },
 
-    async run(task: string): Promise<RunResult> {
+    async run(task: MessageInput): Promise<RunResult> {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message: task })
 
@@ -190,6 +203,7 @@ export function agent(options: AgentOptions): AgentInstance {
           }
 
           const result: RunResult = {
+            requestId: crypto.randomUUID(),
             output,
             turns: stepResults.map((s, i) => ({
               turn: `step-${i + 1}`,
@@ -214,7 +228,7 @@ export function agent(options: AgentOptions): AgentInstance {
       }
     },
 
-    async *chatStream(message: string): AsyncIterable<string> {
+    async *chatStream(message: MessageInput): AsyncIterable<string> {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message })
       const startTime = Date.now()
@@ -234,7 +248,7 @@ export function agent(options: AgentOptions): AgentInstance {
         // 流式结束后保存记忆，与 chat() 行为一致
         if (options.memory) {
           messageHistory.push(
-            { role: "user", content: message },
+            { role: "user", content: toMemoryContent(message) } as ModelMessage,
             { role: "assistant", content: fullText },
           )
           trimHistory()
@@ -248,7 +262,7 @@ export function agent(options: AgentOptions): AgentInstance {
       }
     },
 
-    async *runStream(task: string): AsyncIterable<RunEvent> {
+    async *runStream(task: MessageInput): AsyncIterable<RunEvent> {
       await ensureInit()
       await pm.emit("beforeInput", instance, { message: task })
       const startTime = Date.now()

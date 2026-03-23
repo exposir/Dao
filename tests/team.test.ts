@@ -11,7 +11,7 @@ import type { AgentInstance, TeamRunEvent } from "../src/core/types.js"
 function mockMember(role: string): AgentInstance {
   return {
     chat: vi.fn(async () => `${role} 回复`),
-    run: vi.fn(async () => ({ output: `${role} 完成`, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 })),
+    run: vi.fn(async () => ({ requestId: "test", output: `${role} 完成`, turns: [], usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, duration: 0 })),
     chatStream: vi.fn(async function* () { yield "mock" }),
     runStream: vi.fn(async function* () {}),
     resume: vi.fn(),
