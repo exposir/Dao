@@ -14,6 +14,26 @@ Dao 的工具系统采用**三层策略**，框架不绑定特定工具生态：
 
 ---
 
+## 内置工具
+
+```typescript
+import { readFile, writeFile, deleteFile, listDir, runCommand, search, fetchUrl } from "dao-ai/tools"
+```
+
+| 工具 | 功能 | 参数 |
+|------|------|------|
+| `readFile` | 读取文件内容 | `path`、`encoding`（可选） |
+| `writeFile` | 创建或覆盖文件 | `path`、`content` |
+| `deleteFile` | 删除文件（不能删目录） | `path` |
+| `listDir` | 递归列出目录结构 | `dir`、`recursive`（可选）、`maxDepth`（可选） |
+| `runCommand` | 执行 shell 命令 | `command`、`cwd`（可选） |
+| `search` | 按关键词搜索文件内容 | `query`、`dir`（可选）、`ext`（可选） |
+| `fetchUrl` | HTTP 请求（GET/POST） | `url`、`method`（可选）、`body`（可选）、`headers`（可选） |
+
+> 内置工具默认不开启 `confirm`。生产环境建议对 `writeFile`、`deleteFile`、`runCommand` 等高风险工具配合 `onConfirm` 回调或 `beforeToolCall` 插件 hook 实现审批。
+
+---
+
 ## 工具定义
 
 Dao 统一使用 `tool()` 函数定义工具，传入一个对象。
@@ -169,20 +189,4 @@ const bot = agent({
 
 > **注意**：如果工具标记了 `confirm: true` 但 agent 未配置 `onConfirm` 回调，框架会**直接抛错**而不是静默跳过确认。这是安全设计——确保危险工具不会在没有审批机制的情况下被执行。
 
----
 
-## 内置工具
-
-```typescript
-import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
-```
-
-| 工具 | 功能 | 参数 |
-|------|------|------|
-| `readFile` | 读取文件内容 | `path`、`encoding`（可选） |
-| `writeFile` | 创建或覆盖文件 | `path`、`content` |
-| `listDir` | 递归列出目录结构 | `path`、`depth`（可选） |
-| `runCommand` | 执行 shell 命令 | `command`、`cwd`（可选） |
-| `search` | 按关键词搜索文件内容 | `query`、`path`（可选） |
-
-> 内置工具默认不开启 `confirm`。生产环境建议对 `writeFile`、`runCommand` 等高风险工具配合 `onConfirm` 回调或 `beforeToolCall` 插件 hook 实现审批。

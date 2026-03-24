@@ -2,7 +2,7 @@
  * 道（Dao）— 内置工具
  *
  * 开箱即用的常用工具集合。
- * 使用方式：import { readFile, writeFile, listDir, runCommand } from "dao-ai/tools"
+ * 使用方式：import { readFile, writeFile, deleteFile, listDir, runCommand, search, fetchUrl } from "dao-ai/tools"
  */
 
 import { tool } from "../tool.js"
@@ -48,6 +48,30 @@ export const writeFile = tool({
       return `已写入 ${filePath}（${content.length} 字符）`
     } catch (err: any) {
       return `错误：无法写入文件 ${filePath} — ${err.message}`
+    }
+  },
+})
+
+/** 删除文件 */
+export const deleteFile = tool({
+  name: "deleteFile",
+  description: "删除指定路径的文件。只能删除文件，不能删除目录。如果文件不存在会返回提示而非报错。",
+  params: {
+    path: "要删除的文件路径",
+  },
+  run: ({ path: filePath }) => {
+    try {
+      if (!fs.existsSync(filePath)) {
+        return `文件不存在：${filePath}`
+      }
+      const stat = fs.statSync(filePath)
+      if (stat.isDirectory()) {
+        return `错误：${filePath} 是目录，不能用 deleteFile 删除。请使用 runCommand 执行 rm -rf。`
+      }
+      fs.unlinkSync(filePath)
+      return `已删除 ${filePath}`
+    } catch (err: any) {
+      return `错误：无法删除文件 ${filePath} — ${err.message}`
     }
   },
 })
@@ -172,5 +196,47 @@ export const search = tool({
     return results.length > 0
       ? results.slice(0, 50).join("\n") + (results.length > 50 ? `\n... 还有 ${results.length - 50} 条结果` : "")
       : `未找到包含 "${query}" 的内容`
+  },
+})
+
+/** HTTP 请求 */
+export const fetchUrl = tool({
+  name: "fetchUrl",
+  description: "发起 HTTP 请求获取网页内容或 API 数据。传入完整 URL（含 https://）。默认 GET 请求。如果返回错误状态码，根据错误信息调整 URL 或参数后重试。返回内容为纯文本，最大 100KB。",
+  params: {
+    url: "完整的请求 URL，必须包含协议（https:// 或 http://）",
+    method: { type: "string", description: "请求方法：GET 或 POST，默认 GET", optional: true },
+    body: { type: "string", description: "POST 请求体，JSON 字符串格式", optional: true },
+    headers: { type: "string", description: "自定义请求头，JSON 字符串格式", optional: true },
+  },
+  run: async ({ url, method, body, headers }) => {
+    try {
+      const opts: RequestInit = {
+        method: method ?? "GET",
+        signal: AbortSignal.timeout(15000),
+      }
+      if (body) opts.body = body
+      if (headers) {
+        try { opts.headers = JSON.parse(headers) } catch { /* 忽略无效 headers */ }
+      }
+      if (body && !opts.headers) {
+        opts.headers = { "Content-Type": "application/json" }
+      }
+
+      const res = await fetch(url, opts)
+      if (!res.ok) {
+        return `HTTP ${res.status} ${res.statusText} — ${url}`
+      }
+
+      const text = await res.text()
+      // 截断过长的响应
+      const maxLen = 100_000
+      if (text.length > maxLen) {
+        return text.slice(0, maxLen) + `\n\n... 内容过长，已截断（共 ${text.length} 字符）`
+      }
+      return text
+    } catch (err: any) {
+      return `请求失败：${err.message} — ${url}`
+    }
   },
 })

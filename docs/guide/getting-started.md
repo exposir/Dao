@@ -127,11 +127,11 @@ Dao 提供开箱即用的常用工具：
 
 ```typescript
 import { agent } from "dao-ai"
-import { readFile, writeFile, listDir, runCommand, search } from "dao-ai/tools"
+import { readFile, writeFile, deleteFile, listDir, runCommand, search, fetchUrl } from "dao-ai/tools"
 
 const coder = agent({
   role: "开发者",
-  tools: [readFile, writeFile, listDir, runCommand],
+  tools: [readFile, writeFile, deleteFile, listDir, runCommand, search, fetchUrl],
 })
 
 await coder.run("读取 package.json 并告诉我项目名称")
