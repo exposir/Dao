@@ -332,7 +332,7 @@ const qwen = agent({
 
 通过 `.env` 文件配置 API Key：
 
-```env
+```sh
 # 开源模型
 DEEPSEEK_API_KEY=sk-xxx
 MOONSHOTAI_API_KEY=sk-xxx

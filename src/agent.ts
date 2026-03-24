@@ -100,7 +100,7 @@ export function agent(options: AgentOptions): AgentInstance {
       switch (part.type) {
         case "text": return { type: "text", text: part.text }
         case "image": return { type: "image", image: part.image }
-        case "file": return { type: "file", data: part.data, mediaType: part.mediaType }
+        case "file": return { type: "file", data: part.data, mediaType: part.mediaType, ...(part.filename ? { filename: part.filename } : {}) }
       }
     })
   }

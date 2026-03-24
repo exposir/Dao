@@ -16,7 +16,7 @@ npm install -D tsx typescript
 
 Dao 使用 `provider/model` 格式指定模型。先在项目根目录创建 `.env`：
 
-```env
+```sh
 DEEPSEEK_API_KEY=your_key
 ```
 

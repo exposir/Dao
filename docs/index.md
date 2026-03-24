@@ -28,7 +28,7 @@ features:
     details: DeepSeek / Qwen / Kimi 等开源模型开箱即用，一个环境变量搞定。
   - icon: 🔌
     title: 插件生态
-    details: 核心精简，能力通过插件扩展。7 个 Hook 覆盖全生命周期。
+    details: 核心精简，能力通过插件扩展。8 个 Hook 覆盖全生命周期，V2.5 支持修改 prompt 和消息。
   - icon: 🚀
     title: 极致轻量
     details: 核心代码不到 3000 行，运行时仅 2 个依赖。一个包搞定。

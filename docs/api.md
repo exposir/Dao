@@ -163,6 +163,7 @@ interface FilePart {
   mediaType: string
   filename?: string
 }
+```
 
 ### Step 类型
 
@@ -369,6 +370,7 @@ interface TeamInstance {
 > `memberResults` 和流式回调是实例级闭包状态，并发调用会互相污染。
 > 需要并行执行时，请创建多个 team 实例。
 
+```typescript
 interface TeamRunResult {
   /** 最终输出 */
   output: string
@@ -704,7 +706,7 @@ interface ConfigOptions {
   // === 预留扩展点 ===
 
   /**
-   * 可观测性配置（V2.4 计划）
+   * 可观测性配置 (V2.4)
    */
   telemetry?: {
     enabled?: boolean
@@ -712,7 +714,7 @@ interface ConfigOptions {
   }
 
   /**
-   * 成本上限（V2.3 计划）
+   * 成本上限 (V2.3)
    */
   maxCostPerRun?: number
 }

@@ -9,7 +9,7 @@
 [![npm version](https://img.shields.io/npm/v/dao-ai.svg?style=flat-square&color=cb3837)](https://www.npmjs.com/package/dao-ai)
 [![license](https://img.shields.io/npm/l/dao-ai.svg?style=flat-square&color=blue)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![test](https://img.shields.io/badge/tests-162%20passed-brightgreen?style=flat-square)](./tests)
+[![test](https://img.shields.io/badge/tests-333%20passed-brightgreen?style=flat-square)](./tests)
 
 基于 Vercel AI SDK 构建的 TypeScript AI Agent 框架。<br>
 DeepSeek / Qwen / Gemini / GPT 开箱即用，中文优先，开源模型友好。

@@ -400,7 +400,7 @@ export interface PluginOptions {
 
 /** 插件 hooks 定义 */
 export interface PluginHooks {
-  beforeInput?: (ctx: HookContext & { message: string }) => void | Promise<void>
+  beforeInput?: (ctx: HookContext & { message: MessageInput }) => void | Promise<void>
   /**
    * 模型调用前（V2.5 增强）
    * ctx.systemPrompt 和 ctx.messages 是可写的，
@@ -464,12 +464,12 @@ export interface ConfigOptions {
 
   /** 全局插件 */
   globalPlugins?: PluginInstance[]
-  /** 可观测性配置 @planned V2.4 */
+  /** 可观测性配置 (V2.4) */
   telemetry?: {
     enabled?: boolean
     exporter?: (event: any) => void
   }
-  /** 成本上限 @planned V2.3 */
+  /** 成本上限 (V2.3) */
   maxCostPerRun?: number
 }
 
