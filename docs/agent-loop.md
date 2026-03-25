@@ -166,7 +166,6 @@ const result = streamText({
     // 触发插件 hooks
     // 通过 AsyncIterable 推送给调用者
   },
-})
 ```
 
 **事件流**：
@@ -183,6 +182,11 @@ for await (const event of agent.runStream("任务")) {
 }
 ```
 
+> [!NOTE]
+> V2.3 已实现 `runStepsStream()`，按步骤逐个输出 `step_start`/`step_end` 事件。
+> 但单步内部的模型输出仍为缓冲式；真逐 token 流式需重构 engine 与 loop 的交互方式。
+> 无 steps 的 `runStream()` 是真实时流式的，不受此限制。
+
 ---
 
 ## 8. 记忆管理
@@ -197,9 +201,8 @@ chat("问题3") → 带上所有历史调用模型
 clearMemory() → 清空历史
 ```
 
-**当前实现**：内存存储（数组），进程重启后丢失。messages 超出上下文窗口时报错。
+**当前实现**：内存存储（数组），进程重启后丢失。
 
-**上下文窗口管理**（未来计划）：
-- 自动压缩早期消息（保留最近 N 轮 + 摘要）
-- 压缩策略：让 LLM 生成摘要，替换原始消息
-- 需要解决 token 计数（不同模型 tokenizer 不同）和压缩调用的额外开销
+**上下文窗口管理**（V2.3 已实现）：
+- `contextWindow.maxMessages` 滑动窗口裁剪，防止长对话爆 token
+- 更精细的 token 级裁剪可通过 V2.5 plugin 可变性（`beforeModelCall` 修改 `messages`）自行实现

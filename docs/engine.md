@@ -143,7 +143,7 @@ await promise
 > [!WARNING]
 > `resume()` 是**广播式恢复**：调用一次会恢复该 agent 上所有等待中的 `run()`。
 > 如果同一个 agent 并发跑多个含 `{ wait: true }` 的 workflow，`resume(data)` 无法只恢复其中一个。
-> 这是当前版本的设计限制，后续版本计划引入 per-run token 机制。
+> 这是当前版本的设计限制。per-run 精确恢复属于 V3.0 范畴（已暂缓），大多数场景顺序调用即可。
 
 ### 2.6 函数步骤
 
@@ -280,15 +280,14 @@ steps: [
 
 ---
 
-## 9. runStream() + steps 的行为
+## 9. runStream() + steps 的行为（V2.3 已实现）
 
-当通过 `agent.runStream()` 执行带 `steps` 的 agent 时，当前实现是**缓冲式**的：
+当通过 `agent.runStream()` 执行带 `steps` 的 agent 时，V2.3 实现了**步骤级流式**：
 
-1. `runSteps()` 按顺序执行所有步骤，`step_start` / `step_end` 事件进入内存数组
-2. 全部步骤执行完毕后，统一 yield 所有事件
-3. 最后 yield `text` (最终输出) 和 `done` 事件
+1. `runStepsStream()` 按顺序执行步骤，每步完成后实时 yield `step_start` / `step_end` 事件
+2. 最后 yield `text` (最终输出) 和 `done` 事件
 
 > [!NOTE]
-> 这意味着用户不会在步骤执行中实时收到事件，而是等全部完成后一次性收到。
-> 真正的逐步流式输出计划在 V2.3 实现（见 [roadmap](./roadmap.md)）。
+> 能实时看到 `step_start`/`step_end`，但单步内部的模型输出仍为缓冲式。
+> 真逐 token 流式需重构 engine 与 loop 的交互方式。
 > 无 steps 的 `runStream()` 是真实时流式的，不受此限制。

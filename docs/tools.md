@@ -7,7 +7,7 @@ Dao 的工具系统采用**三层策略**，框架不绑定特定工具生态：
 | 层级 | 方式 | 说明 |
 |------|------|------|
 | **自定义工具** | `tool()` | 用户用工厂函数定义任意工具，简写语法，不依赖 Zod。这是框架的主要扩展机制 — RAG、数据库、API 调用全通过 `tool()` 接入 |
-| **内置工具** | `dao-ai/tools` | 5 个最常用的 coding 工具（读、写、浏览、执行、搜索），开箱即用，可选导入 |
+| **内置工具** | `dao-ai/tools` | 7 个常用工具（readFile / writeFile / deleteFile / listDir / runCommand / search / fetchUrl），开箱即用，可选导入 |
 | **生态桥接** | `mcpTools()` | 一行代码接入任何 MCP server 的工具，复用社区生态，不重复造轮子 |
 
 > **核心原则**：框架只负责工具的定义、调度和拦截（confirm / beforeToolCall），具体能力由用户或 MCP 生态提供。RAG、沙箱等不内置，因为 `tool()` 足够灵活。

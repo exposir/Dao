@@ -459,7 +459,6 @@ interface ToolOptions {
 
   /** 执行函数 */
   run: (params: any, ctx?: ToolContext) => any | Promise<any>
-  // V0.1 参数类型为 any，V0.5 计划通过泛型从 params 定义自动推导类型
 
   /**
    * 执行前是否需要用户确认

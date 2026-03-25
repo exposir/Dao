@@ -65,7 +65,7 @@ agent({ role, model, tools, steps, rules, memory })
 核心精简，扩展通过 hooks 生命周期注入：
 
 ```
-beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterToolCall → onComplete
+beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterToolCall → afterStep → onComplete / onError
 ```
 
 ---
@@ -105,27 +105,26 @@ beforeInput → beforeModelCall → afterModelCall → beforeToolCall → afterT
 
 ---
 
-## 未来演进方向
+## 已实现的更多能力
 
-### 1. 可观测性（V2.4 📋）
+### 4. 可观测性（V2.4 ✅）
 
-- Tracing：每次决策链路追踪
-- Token 用量监控
-- OpenTelemetry 集成
+- `RunResult.requestId` UUID 链路追踪
+- Token 用量自动统计
+- `telemetryPlugin()` OpenTelemetry 集成
 
-### 2. 上下文管理（V2.3 📋）
+### 5. 上下文管理 + 成本控制（V2.3 ✅）
 
-- Token 计数 + 自动截断/摘要（类型已预留 `contextWindow`）
-- 成本上限 `maxCostPerRun`
+- `contextWindow.maxMessages` 滑动窗口裁剪
+- `maxCostPerRun` token 总量上限
 
-### 3. 安全边界
+### 6. 可测试性（V2.2 ✅）
 
-- Prompt injection 防护
-- 工具权限分级
-- 敏感信息过滤
+- `modelProvider` + `mockModel()` 模型 Mock
 
-### 4. 可测试性（V2.2 ✅）
+### 7. Plugin 深度介入 + 共享状态（V2.5 ✅）
 
-- 模型 Mock（`modelProvider` + `mockModel()` 已实现）
-- 响应录制/回放
-- 中间步骤断言
+- `beforeModelCall` 可修改 `systemPrompt` / `messages`
+- `StepContext.workspace` 步骤间共享数据
+- `onAsk` 运行中向用户提问
+- `agent.state` 跨 run 共享状态

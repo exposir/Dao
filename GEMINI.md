@@ -59,6 +59,10 @@ docs/                 # VitePress 文档站
 - **V0.1**：agent + tool + loop + model + 基础 memory
 - **V0.5**：steps 引擎 + rules 系统
 - **V1.0**：team + plugins + 内置工具
+- **V1.1–V1.2**：重试/超时/错误分类 + goal/background/guardrail
+- **V2.0–V2.2**：confirm + 流式事件 + fallback + delegates + 结构化输出 + mock
+- **V2.3–V2.4**：上下文管理 + 成本控制 + 多模态 + MCP + OTel + 国际化
+- **V2.5**：Plugin 可变性 + workspace + ask + state
 
 ## 重要约定
 
