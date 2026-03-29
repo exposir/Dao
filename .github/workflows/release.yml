@@ -58,6 +58,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm
-        run: npm publish
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            npm publish
+          else
+            echo "NPM_TOKEN not configured — skipping npm publish."
+            echo "To enable: add NPM_TOKEN secret to repo Settings → Secrets → Actions"
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
