@@ -288,7 +288,7 @@ configure({
 | **V2.x** | confirm + 流式 + fallback + delegates + 结构化输出 + mock  |  ✅  |
 | **V2.3** | 上下文管理 + 成本控制                                      |  ✅  |
 | **V2.4** | 多模态 + MCP + OTel + 国际化                               |  ✅  |
-| **V2.5** | Plugin 可变性 + workspace + ask + state                    |  ✅  |
+| **V2.5** | Plugin 可变性 + workspace + ask + state + 示例生态             |  ✅  |
 
 ---
 

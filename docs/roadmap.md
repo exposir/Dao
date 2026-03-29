@@ -27,7 +27,7 @@
 
 - [x] 插件 hooks 正常触发
 - [x] `team()` 能调度多个 Agent
-- [x] 内置工具可用（readFile / writeFile / listDir / runCommand / search）
+- [x] 内置工具可用（readFile / writeFile / deleteFile / listDir / runCommand / search / fetchUrl）
 - [x] 中文文档
 
 ## V1.1 ✅ 不挂
@@ -103,6 +103,7 @@
 - [x] **StepContext.workspace**：`StepContext` 增加 `workspace: Map<string, any>`，步骤间通过 key-value 共享结构化数据
 - [x] **Mid-run Clarification**：Agent Loop 内置 `ask` 工具，运行中可主动暂停向用户提问
 - [x] **Agent 共享状态**：`AgentInstance` 增加 `state: Map<string, any>` 可读写的运行时状态
+- [x] **示例生态**：提供 PR 自动审查（杀手级示例）、本地代码审查等可运行示例，位于 `examples/` 目录
 
 ## V3.0 ⏸️ 暂缓
 
