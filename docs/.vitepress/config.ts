@@ -30,13 +30,13 @@ export default defineConfig({
           text: "入门",
           items: [
             { text: "快速开始", link: "/guide/getting-started" },
-            { text: "模型配置", link: "/model" },
           ],
         },
         {
           text: "核心概念",
           items: [
-            { text: "工具系统", link: "/tools" },
+            { text: "工具系统", link: "/guide/tools" },
+            { text: "插件系统", link: "/guide/plugins" },
             { text: "Agent Loop", link: "/agent-loop" },
             { text: "Steps 引擎", link: "/engine" },
           ],
@@ -44,8 +44,7 @@ export default defineConfig({
         {
           text: "进阶",
           items: [
-            { text: "插件系统", link: "/plugins" },
-            { text: "团队协作", link: "/team" },
+            { text: "团队协作", link: "/guide/team" },
             { text: "多模态输入", link: "/multimodal" },
             { text: "MCP 协议", link: "/mcp" },
           ],

@@ -9,9 +9,9 @@
 [![npm version](https://img.shields.io/npm/v/dao-ai.svg?style=flat-square&color=cb3837)](https://www.npmjs.com/package/dao-ai)
 [![license](https://img.shields.io/npm/l/dao-ai.svg?style=flat-square&color=blue)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![test](https://img.shields.io/badge/tests-333%20passed-brightgreen?style=flat-square)](./tests)
+[![test](https://img.shields.io/badge/tests-163%20passed-brightgreen?style=flat-square)](./tests)
 
-3 行代码创建 AI Agent。不需要 Zod，不需要 LangChain。<br>
+3 行代码创建 AI Agent。不需要 Zod，不需要 LangChain。
 DeepSeek / Qwen / Gemini / GPT 开箱即用。
 
 ```
@@ -60,13 +60,53 @@ console.log(await bot.chat("你好"))
 | **共享状态**     | `state` + `workspace`             | 无             | 无             | 无             |
 | **中文**         | i18n + 开源模型优先               | 英文为主       | 英文为主       | 英文为主       |
 
-> **定位**：Mastra 大而重（agent.ts 5375 行），LangChain 抽象复杂，AI SDK 灵活但太底层。**Dao 追求开箱即用 + 渐进复杂**。
+> **定位**：Mastra 大而重，LangChain 抽象复杂，AI SDK 灵活但太底层。**Dao 追求开箱即用 + 渐进复杂**。
+
+---
+
+## ⭐ 真实案例：PR 自动审查
+
+输入任意 GitHub PR URL，Agent 自动获取 diff 并生成结构化审查意见：
+
+```bash
+npx tsx examples/pr-reviewer.ts https://github.com/facebook/react/pull/32123
+```
+
+```typescript
+import { agent, tool } from "dao-ai"
+
+// 接入 GitHub API，获取 PR 详情和文件列表
+const fetchPRDetails = tool({
+  name: "fetchPRDetails",
+  params: { prUrl: "GitHub PR URL" },
+  run: async ({ prUrl }) => { /* 调用 GitHub API */ },
+})
+
+// Agent 负责审查逻辑（fetch diff → 分析 → 输出意见）
+const reviewer = agent({
+  role: "资深代码审查员",
+  model: "deepseek/deepseek-chat",
+  tools: [fetchPRDetails, fetchFileDiff],
+  rules: { focus: ["安全漏洞", "逻辑错误"], reject: ["修改代码"] },
+})
+
+await reviewer.run("审查这个 PR：https://github.com/owner/repo/pull/123")
+```
+
+完整代码见 [examples/pr-reviewer.ts](examples/pr-reviewer.ts)。
 
 ---
 
 ## 渐进式示例
 
-**1. 加工具** — 给 Agent 能力，让它能读文件、执行命令：
+**1. 3 行跑通** — 最简用法：
+
+```typescript
+const bot = agent({ model: "deepseek/deepseek-chat" })
+await bot.chat("你好")
+```
+
+**2. 加工具** — 给 Agent 能力，让它能读文件、执行命令：
 
 ```typescript
 import { agent, readFile, listDir } from "dao-ai"
@@ -81,7 +121,7 @@ const result = await auditor.run("审查 src/ 目录")
 
 > Dao 内置 7 个常用工具：`readFile` / `writeFile` / `deleteFile` / `listDir` / `runCommand` / `search` / `fetchUrl`
 
-**2. 加步骤** — 定义执行流程，支持串行、并行、条件分支：
+**3. 加步骤** — 定义执行流程，支持串行、并行、条件分支：
 
 ```typescript
 const reviewer = agent({
@@ -96,10 +136,10 @@ const reviewer = agent({
 })
 ```
 
-**3. 完整功能** — 团队协作 + 规则约束 + 插件 + 容错，按需叠加：
+**4. 完整功能** — 团队协作 + 规则约束 + 插件 + 容错，按需叠加：
 
 ```typescript
-import { agent, team, plugin } from "dao-ai"
+import { agent, team, logger } from "dao-ai"
 
 const squad = team({
   members: {
@@ -250,6 +290,7 @@ configure({
 | **V2.4** | 多模态 + MCP + OTel + 国际化                               |  ✅  |
 | **V2.5** | Plugin 可变性 + workspace + ask + state                    |  ✅  |
 
+---
 
 ## 文档
 
