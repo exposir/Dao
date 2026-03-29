@@ -73,7 +73,7 @@ export default defineConfig({
     // 页脚
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Copyright © 2025 exposir",
+      copyright: "Copyright © 2025-2026 exposir",
     },
 
     // 搜索
