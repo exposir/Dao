@@ -46,6 +46,7 @@ export default defineConfig({
         {
           text: "进阶",
           items: [
+            { text: "Retry 与 Timeout", link: "/guide/retry-and-timeout" },
             { text: "团队协作", link: "/guide/team" },
             { text: "多模态输入", link: "/multimodal" },
             { text: "MCP 协议", link: "/mcp" },

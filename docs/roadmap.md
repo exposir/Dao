@@ -93,7 +93,7 @@
 - [x] OpenTelemetry 集成（`telemetryPlugin()` 可选依赖）
 - [x] 国际化（`setLocale("en")` / `t(key)` 中英文切换）
 
-> **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。
+> ✅ **RAG**：不内置，通过 `tool()` 接入向量数据库，MCP 支持后可挂载社区 RAG 服务。
 
 ## V2.5 ✅ 插件深水区
 
@@ -103,17 +103,29 @@
 - [x] **StepContext.workspace**：`StepContext` 增加 `workspace: Map<string, any>`，步骤间通过 key-value 共享结构化数据
 - [x] **Mid-run Clarification**：Agent Loop 内置 `ask` 工具，运行中可主动暂停向用户提问
 - [x] **Agent 共享状态**：`AgentInstance` 增加 `state: Map<string, any>` 可读写的运行时状态
-- [x] **示例生态**：提供 PR 自动审查（杀手级示例）、本地代码审查等可运行示例，位于 `examples/` 目录
+- [x] **示例生态**：`pr-reviewer`（GitHub PR 自动审查）、`code-reviewer`（本地代码审查）、`translator`、`persistence` 等 13 个可运行示例，覆盖常用场景
 
-## V3.0 ⏸️ 暂缓
+## V2.6 🚧 完善文档与生态
 
-> 以下功能经评估后暂缓，待真实用户需求驱动再决定：
+> 2.5.1 发版后优先级：补全已有能力的使用文档，扩充 examples 覆盖常见场景
 
-- `resume()` per-run token — 仅高并发服务端场景需要，大多数用法是顺序调用
-- Team per-run 状态隔离 — 同上，顺序调用不需要
-- 动态工具加载 — 可通过重新创建 agent 实例解决，不是刚需
+- [x] **Retry + Timeout 文档**（`docs/guide/retry-and-timeout.md`）
+- [ ] **Streaming Events 完整示例**（`streamEvents: true` 接入 WebSocket / SSE）
+- [ ] **Fastify 服务端接入示例**（把 `agent` 跑在 HTTP server 上）
+- [ ] **`contextWindow` token 级滑窗**（从消息数改为按 token 数截断）
 
 ---
+
+## V3.0 🚧 探索方向
+
+> 2.5 发布后，待真实用户反馈驱动再决定优先级。以下为初步候选：
+
+- **Agent 持久化**：序列化 `AgentInstance` 到文件/Redis，支持中断恢复（需权衡轻量定位）
+- **逐 token 流式**：重构 engine 与 loop 交互，真·流式输出到单步内部
+- **per-run 精确恢复**：`resume()` 从广播式改为 run 级别精确控制
+- **沙箱 / 工具隔离**：安全执行不可信工具（非优先级，看用户场景）
+
+|
 
 ## ⚠️ 已知缺口（可通过 Plugin 绕行）
 
@@ -125,7 +137,6 @@
 | **无状态持久化** | 轻量定位，持久化方式因场景差异大 | `examples/persistence.ts` 提供文件 / Redis 两种方案 |
 | **无批量任务工具** | 循环 + 并发是语言基础能力 | `examples/batch.ts` 提供带重试的并发批量示例 |
 | **无 token 级流式** | 单步内缓冲式执行是设计取舍 | V2.5 步骤级流式已可用（`runStream()`），真逐 token 流式属 V3.x 范畴 |
-| **无 web / API 服务示例** | 框架专注 Agent 逻辑层 | 计划补充 Fastify/Express 接入示例 |
 
 ---
 
@@ -148,7 +159,7 @@
 - **`team({ lead })` 重建 lead** — lead 需要注入 delegate 工具，而工具列表是 agent 创建时固定的，复用原实例需要动态注入，引入更多复杂度
 - **`getConfig()` 非完整深拷贝** — tools/plugins 含函数引用和闭包状态，`structuredClone` 无法处理；顶层副本 + rules/steps 数组复制已覆盖 99% 误操作
 - **`resume()` 广播式恢复** — 同一 agent 多个 `wait` 挂起时，`resume()` 会全部恢复。per-run 精确恢复属于 V3.0 范畴
-- **`contextWindow.maxMessages` 是消息数滑窗** — 不是按 token 截断，也没有自动摘要策略；token 级裁剪可通过 V2.5 plugin 可变性（`beforeModelCall` 修改 `messages`）自行实现
+- **`contextWindow.maxMessages` 是消息数滑窗** — 不是按 token 截断，也没有自动摘要策略；V2.6 计划升级为 token 级滑窗，届时此设计决策更新
 - **`maxCostPerRun` 是 token 总量上限** — 不是按真实模型价格计费，不包含 provider 级成本估算；如需真实计费可通过 plugin `afterModelCall` 自行统计
 - **`runStream() + steps` 是步骤级流式** — 能实时看到 `step_start/step_end`，但单步内部的模型输出仍为缓冲式；真逐 token 流式需重构 engine 与 loop 的交互方式
 
