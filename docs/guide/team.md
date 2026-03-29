@@ -5,7 +5,8 @@
 ## 最小示例
 
 ```typescript
-import { agent, team } from "dao-ai"
+import { agent, team, tool } from "dao-ai"
+import { search } from "dao-ai/tools"
 
 const researcher = agent({
   model: "deepseek/deepseek-chat",
