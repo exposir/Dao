@@ -34,16 +34,25 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$TAG" >> $GITHUB_OUTPUT
+          echo "Extracted version: $TAG"
 
       - name: Generate changelog
+        id: changelog
         run: |
           if [ -f CHANGELOG.md ]; then
-            # 提取对应版本的 CHANGELOG 内容
-            TAG_VERSION="v${{ steps.version.outputs.VERSION }}"
-            # 用 awk 提取 CHANGELOG.md 中该版本之后的内容
-            CHANGELOG=$(awk "/^## \[${TAG_VERSION##v}/,/^## \[/ {if(/^## \[/)next; print}" CHANGELOG.md | sed '/^$/d')
+            VERSION="${{ steps.version.outputs.VERSION }}"
+            # 提取 ## [VERSION] 到下一个 ## [ 之间内容，排除空行
+            CHANGELOG=$(awk -v ver="$VERSION" '
+              found && /^## \[/ { exit }
+              found { if (NF) print }
+              /^## \['"'"'[0-9]/ { gsub(/\[|\]/,"",$2); if ($2 == ver) found=1 }
+            ' CHANGELOG.md)
+            CHANGELOG="${CHANGELOG//$'\n'/\\n}"
             echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+            echo "Changelog extracted (${#CHANGELOG} chars)"
           else
             echo "changelog=See the commit history for details." >> $GITHUB_OUTPUT
           fi
