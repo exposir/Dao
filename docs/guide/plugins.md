@@ -210,11 +210,101 @@ Agent 内部会看到 `ask` 工具的描述："向用户提问，等待用户回
 
 ## 实用插件示例
 
+### 工具级重试
+
+工具执行失败（网络抖动、外部 API 限流）很常见，用包装器给工具加自动重试：
+
+```typescript
+import { tool } from "dao-ai"
+
+// 基础工具
+const fetchData = tool({ name: "fetchData", params: { url: "URL" }, run: async ({ url }) => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.text()
+}})
+
+// 包装器：指数退避重试（1s → 2s → 4s）
+function withRetry(base, options = {}) {
+  const { maxRetries = 3 } = options
+  return tool({
+    name: `[retry] ${base.name}`,
+    description: base.description,
+    params: base.params,
+    run: async (params) => {
+      for (let i = 0; i < maxRetries; i++) {
+        try { return await base.run(params) }
+        catch (err) {
+          if (i < maxRetries - 1)
+            await new Promise(r => setTimeout(r, 1000 * 2 ** i))
+          else throw err
+        }
+      }
+      throw err
+    },
+  })
+}
+
+const bot = agent({ model: "...", tools: [withRetry(fetchData)] })
+```
+
+完整示例见 [examples/retry-tool.ts](https://github.com/exposir/Dao/blob/main/examples/retry-tool.ts)。
+
+### 批量任务 + 失败重试
+
+跑 N 个任务、限制并发数、只重试失败项：
+
+```typescript
+// 并发限制器（纯 Promise，无需外部库）
+async function concurrentBatch(tasks, limit) {
+  let i = 0
+  const run = async () => {
+    while (i < tasks.length) {
+      const cur = i++
+      results[cur] = await tasks[cur]()
+    }
+  }
+  await Promise.all(Array.from({ length: limit }, run))
+}
+
+// 10 个任务，并发数=3
+const results = await concurrentBatch(
+  urls.map(url => () => bot.run(`分析 ${url}`)),
+  3
+)
+```
+
+完整示例见 [examples/batch.ts](https://github.com/exposir/Dao/blob/main/examples/batch.ts)。
+
+### 状态持久化
+
+`state` 和 `workspace` 是内存 Map，进程重启即丢失。以下方案让多次 run 之间共享状态：
+
+```typescript
+// 文件持久化（零依赖）
+const storage = new FileStorage("./dao-state.json")
+
+// 或 Redis 持久化（分布式场景）
+const storage = new RedisStorage(process.env.REDIS_URL!)
+
+let state = new Map(Object.entries(await storage.read()))
+
+const bot = agent({ model: "...", state })
+
+// run 结束后自动写回
+const run = bot.run.bind(bot)
+bot.run = async (input) => {
+  const result = await run(input)
+  await storage.write(Object.fromEntries(state))
+  return result
+}
+```
+
+完整示例见 [examples/persistence.ts](https://github.com/exposir/Dao/blob/main/examples/persistence.ts)。
+
 ### RAG 检索增强
 
 ```typescript
-import { plugin } from "dao-ai"
-
 const ragPlugin = plugin({
   name: "rag",
   hooks: {

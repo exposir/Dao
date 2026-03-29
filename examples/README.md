@@ -89,6 +89,38 @@ npx tsx examples/i18n.ts
 
 ---
 
+### [retry-tool.ts](retry-tool.ts) — 工具级自动重试
+
+指数退避重试包装器，给任何工具加稳定性，不改原始代码。
+
+```bash
+npx tsx examples/retry-tool.ts
+```
+
+---
+
+### [batch.ts](batch.ts) — 批量任务 + 失败重试
+
+限制并发数、只重试失败项，保留成功结果，适合跑批处理流水线。
+
+```bash
+npx tsx examples/batch.ts
+```
+
+---
+
+### [persistence.ts](persistence.ts) — 状态持久化
+
+`state` 跨进程持久化，支持文件存储（零依赖）和 Redis 存储（分布式场景）。
+
+```bash
+npx tsx examples/persistence.ts
+# 或 Redis 模式：
+REDIS_URL=redis://localhost:6379 npx tsx examples/persistence.ts
+```
+
+---
+
 ### [v25-features.ts](v25-features.ts) — V2.5 新特性演示
 
 展示 V2.5 版本新增能力的合集：workspace / state / ask / Plugin 可变性。

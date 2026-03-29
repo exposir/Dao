@@ -86,7 +86,7 @@ const fetchPRDetails = tool({
 const reviewer = agent({
   role: "资深代码审查员",
   model: "deepseek/deepseek-chat",
-  tools: [fetchPRDetails, fetchFileDiff],
+  tools: [fetchPRDetails, fetchFileDiff, readFile, writeFile, listDir],
   rules: { focus: ["安全漏洞", "逻辑错误"], reject: ["修改代码"] },
 })
 
