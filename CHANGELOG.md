@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.5.1 (2026-03-26)
+
+### Bug Fixes
+
+- **types**: `beforeInput` hook 类型从 `message: string` 修正为 `message: MessageInput`，多模态输入不再类型不一致
+- **agent**: `toMemoryContent()` 保留 `FilePart.filename` 字段，memory 模式不再丢失文件名
+
+### Documentation
+
+- **api.md**: 修复两处缺失的代码块闭合（FilePart / TeamRunResult），`docs:build` 不再失败
+- **index.md**: 插件 Hook 数量从 7 更正为 8
+- **README.md / README.en.md**: 测试徽章更新为 333 passed
+- **agent-loop.md**: 上下文窗口管理和步骤流式描述更新为 V2.3 已实现状态
+- **engine.md**: `runStream() + steps` 行为描述更新为步骤级流式
+- **tools.md**: 内置工具数量从 5 更正为 7
+- **principles.md**: Hook 链补充 `afterStep → onComplete / onError`；演进方向更新为已实现状态
+- **CLAUDE.md / AGENTS.md / GEMINI.md**: 版本阶段补充 V1.1–V2.5
+- **design.md / getting-started.md**: ` ```env ` 代码块改为 ` ```sh `，消除 VitePress 警告
+
+### Other
+
+- 新增 MIT LICENSE 文件
+
 ## 2.5.0 (2026-03-23)
 
 ### Features

@@ -636,8 +636,10 @@ export async function runGenerate<T = any>(
   }
 
   // 触发 beforeModelCall hook（V2.5：插件可修改 systemPrompt）
+  // generate() 无消息历史，传入空数组供插件自由注入上下文（若修改会被忽略）
+  const emptyMessages: any[] = []
   if (pm) {
-    const hookCtx = { prompt: systemPrompt, systemPrompt, messages: [] as any[] }
+    const hookCtx = { prompt: systemPrompt, systemPrompt, messages: emptyMessages }
     const { skipped } = await pm.emit("beforeModelCall", agentInstance, hookCtx)
     if (skipped) {
       if (timeoutId) clearTimeout(timeoutId)
@@ -734,21 +736,23 @@ export async function runGenerate<T = any>(
         }
       } catch (fbErr: any) {
         if (fbTimeoutId) clearTimeout(fbTimeoutId)
-        throw isTimeout
-          ? new TimeoutError(`结构化输出超时（${options.timeout}ms）`, options.timeout!)
-          : new ModelError(`结构化输出在备用模型上也失败：${fbErr.message}`, fbErr)
+        // Bug Fix: fallback 自身的超时状态，而非主模型
+        const fbIsTimeout = fbController?.signal?.aborted || fbErr?.name === "AbortError"
+        throw fbIsTimeout
+          ? new TimeoutError(i18n("error.timeout", { ms: options.timeout ?? 0 }), options.timeout ?? 0)
+          : new ModelError(i18n("error.modelFail", { message: fbErr.message }), fbErr)
       }
     }
 
     if (isTimeout) {
       throw new TimeoutError(
-        `结构化输出超时（${options.timeout}ms）`,
-        options.timeout!,
+        i18n("error.timeout", { ms: options.timeout ?? 0 }),
+        options.timeout ?? 0,
       )
     }
 
     throw new ModelError(
-      `结构化输出失败：${err.message}`,
+      i18n("error.modelFail", { message: err.message }),
       err,
     )
   }
