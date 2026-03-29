@@ -1,6 +1,6 @@
 # 插件系统
 
-插件是扩展 Agent 能力的核心方式。核心框架本身不内置任何"额外能力"——日志、遥测、缓存等全部通过插件实现。
+插件是扩展 Agent 能力的核心方式。核心框架本身不内置任何"额外能力"——日志、遥测、RAG 等全部通过插件实现。
 
 ## 什么是插件
 
@@ -8,15 +8,16 @@
 
 ```
 Agent 启动
+  → beforeInput（收到输入时）
   → beforeModelCall（模型调用前）
   → 模型执行中
   → afterModelCall（模型调用后）
   → beforeToolCall（工具调用前）
+  → 工具执行
   → afterToolCall（工具调用后）
+  → afterStep（步骤完成后）
+  → onComplete（运行完成）
   → onError（出错时）
-  → onAsk（Agent 向用户提问时）
-Agent 结束
-  → afterRun（运行结束后）
 ```
 
 ## 基础示例：计时插件
@@ -49,7 +50,7 @@ const bot = agent({
 也可以注册全局插件（所有 agent 共享）：
 
 ```typescript
-import { configure } from "dao-ai"
+import { configure, telemetryPlugin } from "dao-ai"
 
 configure({
   globalPlugins: [telemetryPlugin({ serviceName: "my-app" })],
@@ -58,9 +59,24 @@ configure({
 
 ## Hook 详解
 
+### beforeInput
+
+在 Agent 收到用户输入时执行，适合做输入预处理或日志：
+
+```typescript
+const inputLogger = plugin({
+  name: "input-logger",
+  hooks: {
+    beforeInput: (ctx) => {
+      console.log("收到输入:", ctx.message)
+    },
+  },
+})
+```
+
 ### beforeModelCall / afterModelCall
 
-在每次 LLM 调用前后执行。V2.5 中 `ctx` 暴露了可写引用：
+在每次模型调用前后执行。V2.5 中 `ctx` 暴露了可写引用，`beforeModelCall` 可以修改 `systemPrompt` 和 `messages`：
 
 ```typescript
 const ragInjector = plugin({
@@ -68,23 +84,36 @@ const ragInjector = plugin({
   hooks: {
     beforeModelCall: async (ctx) => {
       // ✅ 修改 systemPrompt
-      ctx.systemPrompt += `\n\n参考文档：\n${ctx.workspace.get("docs")}`
+      const docs = ctx.workspace?.get("docs")
+      if (docs) {
+        ctx.systemPrompt += `\n\n参考文档：\n${docs}`
+      }
 
       // ✅ 压缩消息历史（只保留最近 20 条）
-      if (ctx.messages.length > 20) {
+      if (ctx.messages && ctx.messages.length > 20) {
         ctx.messages.splice(0, ctx.messages.length - 20)
       }
 
-      // ✅ 追加用户查询的向量检索结果
-      const docs = await vectorDb.search(ctx.messages.at(-1).text)
-      ctx.messages.push({
-        role: "system",
-        content: `相关文档：${docs.join("\n")}`,
-      })
+      // ✅ 追加向量检索结果
+      if (ctx.messages && ctx.messages.length > 0) {
+        const lastMsg = ctx.messages[ctx.messages.length - 1]
+        const query = typeof lastMsg.content === "string"
+          ? lastMsg.content
+          : lastMsg.content.find((p: any) => p.type === "text")?.text ?? ""
+        const docs = await vectorDb.search(query, { topK: 3 })
+        if (docs.length) {
+          ctx.messages.push({
+            role: "system",
+            content: `相关文档：\n${docs.join("\n")}`,
+          })
+        }
+      }
     },
-    afterModelCall: async (ctx, result) => {
-      // ✅ 记录 token 消耗
-      console.log(`tokens: ${result.usage.totalTokens}`)
+    afterModelCall: async (ctx) => {
+      // ctx.response 是 { text, usage }
+      if (ctx.response?.usage) {
+        console.log(`tokens: ${ctx.response.usage.totalTokens}`)
+      }
     },
   },
 })
@@ -98,11 +127,42 @@ const ragInjector = plugin({
 const toolLogger = plugin({
   name: "tool-logger",
   hooks: {
-    beforeToolCall: (ctx, toolName, params) => {
-      console.log(`🔧 调用工具: ${toolName}`, params)
+    beforeToolCall: (ctx) => {
+      console.log(`🔧 调用工具: ${ctx.tool}`, ctx.params)
     },
-    afterToolCall: (ctx, toolName, result) => {
-      console.log(`✅ 工具返回: ${result.slice(0, 100)}...`)
+    afterToolCall: (ctx) => {
+      console.log(`✅ 工具返回: ${String(ctx.result).slice(0, 100)}...`)
+    },
+  },
+})
+```
+
+### afterStep
+
+在每个步骤完成后执行（仅 `run()` 的 steps 模式有效）：
+
+```typescript
+const stepReporter = plugin({
+  name: "step-reporter",
+  hooks: {
+    afterStep: (ctx) => {
+      console.log(`步骤完成: ${ctx.step}`)
+    },
+  },
+})
+```
+
+### onComplete
+
+Agent 运行完成后执行（成功 / 失败 / 超时都会触发）：
+
+```typescript
+const runReporter = plugin({
+  name: "run-reporter",
+  hooks: {
+    onComplete: async (ctx) => {
+      console.log(`完成，耗时 ${ctx.result.duration}ms`)
+      console.log(`tokens: ${ctx.result.usage.totalTokens}`)
     },
   },
 })
@@ -116,53 +176,37 @@ Agent 出错时执行（模型调用失败、工具执行异常等）：
 const errorReporter = plugin({
   name: "error-reporter",
   hooks: {
-    onError: async (ctx, error) => {
-      await slack.notify(`Agent 错误: ${error.message}`)
-      await bugsnag.notify(error)
+    onError: async (ctx) => {
+      // ctx.error — 错误对象
+      await slack.notify(`Agent 错误: ${ctx.error.message}`)
+      await bugsnag.notify(ctx.error)
     },
   },
 })
 ```
 
-### onAsk
+## ask 工具（Agent 运行时提问）
 
-当 Agent 调用内置的 `ask` 工具暂停运行时，向用户提问：
+`onAsk` 不是 plugin hook，而是 `agent()` 的配置项。当 Agent 需要向用户提问时，它通过内置的 `ask` 工具暂停执行并等待回答：
 
 ```typescript
-const cliAsker = plugin({
-  name: "cli-ask",
-  hooks: {
-    onAsk: async (ctx, question) => {
-      // 用于 CLI 场景
-      const readline = await import("readline")
-      const rl = readline.createInterface({ input: process.stdin })
-      return await new Promise(resolve => {
-        rl.question(question + "\n> ", answer => {
-          rl.close()
-          resolve(answer)
-        })
+const bot = agent({
+  model: "deepseek/deepseek-chat",
+  onAsk: async (question) => {
+    // Agent 在运行中调用 ask({ question: "..." }) 时会触发这里
+    const readline = await import("readline")
+    const rl = readline.createInterface({ input: process.stdin })
+    return await new Promise(resolve => {
+      rl.question(question + "\n> ", answer => {
+        rl.close()
+        resolve(answer)
       })
-    },
+    })
   },
 })
 ```
 
-### afterRun
-
-Agent 完成（成功 / 失败 / 超时）后执行：
-
-```typescript
-const runReporter = plugin({
-  name: "run-reporter",
-  hooks: {
-    afterRun: async (ctx, result) => {
-      console.log(`完成，耗时 ${result.duration}ms`)
-      console.log(`tokens: ${result.usage.totalTokens}`)
-      if (result.error) console.error("错误:", result.error)
-    },
-  },
-})
-```
+Agent 内部会看到 `ask` 工具的描述："向用户提问，等待用户回答后继续执行"。它可以主动调用 `ask({ question: "..." })` 来暂停并提问。
 
 ## 实用插件示例
 
@@ -175,40 +219,20 @@ const ragPlugin = plugin({
   name: "rag",
   hooks: {
     beforeModelCall: async (ctx) => {
-      const lastMsg = ctx.messages.at(-1)
-      if (!lastMsg || lastMsg.role !== "user") return
+      if (!ctx.messages?.length) return
 
-      const docs = await vectorDb.search(lastMsg.content, { topK: 3 })
-      if (!docs.length) return
-
-      ctx.systemPrompt += `\n\n[参考资料]\n${docs.map((d, i) => `${i + 1}. ${d}`).join("\n")}`
-    },
-  },
-})
-```
-
-### 缓存相同查询
-
-```typescript
-const cachePlugin = plugin({
-  name: "cache",
-  hooks: {
-    beforeModelCall: async (ctx) => {
-      const lastMsg = ctx.messages.at(-1)
+      // 提取用户查询
+      const lastMsg = ctx.messages[ctx.messages.length - 1]
       if (lastMsg?.role !== "user") return
 
-      const cached = cache.get(lastMsg.content)
-      if (cached) {
-        // 跳过模型调用，直接返回缓存结果
-        ctx.skipModel = true
-        ctx.cachedResult = cached
-      }
-    },
-    afterModelCall: async (ctx, result) => {
-      const lastMsg = ctx.messages.at(-1)
-      if (lastMsg?.role === "user") {
-        cache.set(lastMsg.content, result)
-      }
+      const query = typeof lastMsg.content === "string"
+        ? lastMsg.content
+        : lastMsg.content.find((p: any) => p.type === "text")?.text ?? ""
+
+      const docs = await vectorDb.search(query, { topK: 3 })
+      if (!docs.length) return
+
+      ctx.systemPrompt += `\n\n[参考资料]\n${docs.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")}`
     },
   },
 })
@@ -216,28 +240,35 @@ const cachePlugin = plugin({
 
 ## HookContext 接口
 
-V2.5 之前 context 是只读的，V2.5 新增可写引用：
+V2.5 中 `beforeModelCall` 的 `ctx` 暴露了可写引用。以下是 `HookContext` 的完整字段说明：
 
 ```typescript
 interface HookContext {
-  // 只读属性
-  readonly agent: AgentInstance
-  readonly tools: Tool[]
-  readonly requestId: string
+  // 基础属性
+  agent: AgentInstance                        // 当前 Agent 实例
+  timestamp: number                           // 事件时间戳
+  store: Record<string, any>                 // 插件私有数据存储（同名插件共享）
+  skip: () => void                            // 跳过后续核心行为（仅 beforeToolCall / beforeModelCall 生效）
 
-  // V2.5 新增：可写引用
-  systemPrompt: string                        // 可修改 system prompt
-  messages: Message[]                          // 可增删压缩消息
-  workspace: Map<string, any>                  // 步骤间共享数据
-
-  // V2.5 新增：控制流
-  skipModel?: boolean                          // 跳过模型调用
-  cachedResult?: string                        // 配合 skipModel 使用
+  // 各 hook 传入的额外字段（通过 extra 参数传入，可直接访问）
+  message?: MessageInput                      // beforeInput 时传入
+  prompt?: string                            // beforeModelCall 时传入（system prompt 片段）
+  systemPrompt?: string                      // beforeModelCall 时传入（可写）
+  messages?: any[]                           // beforeModelCall 时传入（可写）
+  response?: any                             // afterModelCall 时传入，格式为 { text, usage }
+  tool?: string                              // beforeToolCall / afterToolCall 时传入
+  params?: any                               // beforeToolCall 时传入
+  result?: any                               // afterToolCall / afterStep / onComplete 时传入
+  step?: Step                                // afterStep 时传入
+  error?: Error                               // onError 时传入
 }
 ```
+
+> **注意**：各 hook 的 extra 字段都通过 `HookContext` 的索引签名 `[key: string]: any` 传入，TypeScript 里可以直接访问，但 IDE 不会自动补全。如需类型安全，可以在 hook 函数内部手动断言。
 
 ## 下一步
 
 - [API 参考：plugin](/api#plugin) — 完整的 Hook 类型定义
 - [Agent Loop](/agent-loop) — 各 Hook 在循环中的执行时机
 - [telemetryPlugin 示例](/api#telemetryplugin) — OpenTelemetry 集成
+- [examples/README.md](https://github.com/exposir/Dao/blob/main/examples/README.md) — 更多可运行的示例

@@ -250,9 +250,9 @@ const bot = agent({
 
 ## 下一步
 
-- [工具系统](/tools) — 学习如何定义自定义工具
+- [工具系统](/guide/tools) — 学习如何定义自定义工具
 - [Agent Loop](/agent-loop) — 了解核心执行循环
 - [Steps 引擎](/engine) — 声明式工作流
-- [插件系统](/plugins) — 扩展 Agent 能力
-- [团队协作](/team) — 多 Agent 协同工作
+- [插件系统](/guide/plugins) — 扩展 Agent 能力
+- [团队协作](/guide/team) — 多 Agent 协同工作
 - [API 文档](/api) — 完整的类型定义和参数说明

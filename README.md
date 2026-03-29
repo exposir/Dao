@@ -295,7 +295,26 @@ configure({
 ## 文档
 
 - [快速上手](./docs/guide/getting-started.md)
-- [完整文档](./docs/index.md)
+- [工具系统](./docs/guide/tools.md)
+- [插件系统](./docs/guide/plugins.md)
+- [团队协作](./docs/guide/team.md)
 - [API 参考](./docs/api.md)
 - [设计原则](./docs/principles.md)
 - [路线图](./docs/roadmap.md)
+
+## 示例
+
+所有示例在 [examples/](./examples) 目录，无需额外配置即可运行：
+
+```bash
+# 快速体验
+npx tsx examples/hello.ts
+
+# PR 自动审查（杀手级示例）
+GITHUB_TOKEN=xxx npx tsx examples/pr-reviewer.ts https://github.com/facebook/react/pull/32123
+
+# 本地代码审查
+npx tsx examples/code-reviewer.ts
+
+# 更多示例见 [examples/README.md](https://github.com/exposir/Dao/blob/main/examples/README.md)
+```

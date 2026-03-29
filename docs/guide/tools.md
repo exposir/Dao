@@ -183,4 +183,4 @@ const fetchPR = tool({
 
 - [工具 API 参考](/api#tool) — 完整的参数类型定义
 - [Agent Loop](/agent-loop) — 工具如何被调用、执行循环如何工作
-- [插件系统](/plugins) — 在工具执行前后注入逻辑
+- [插件系统](/guide/plugins) — 在工具执行前后注入逻辑
