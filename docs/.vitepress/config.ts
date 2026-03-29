@@ -11,6 +11,7 @@ export default defineConfig({
     // 顶部导航
     nav: [
       { text: "指南", link: "/guide/getting-started" },
+      { text: "示例", link: "/guide/examples" },
       { text: "API", link: "/api" },
       { text: "设计", link: "/design" },
       {
@@ -30,6 +31,7 @@ export default defineConfig({
           text: "入门",
           items: [
             { text: "快速开始", link: "/guide/getting-started" },
+            { text: "示例", link: "/guide/examples" },
           ],
         },
         {

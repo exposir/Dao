@@ -94,13 +94,52 @@ async function demoPluginMutability() {
 }
 
 // ============================================================
+// 4. workspace — 步骤间传递结构化数据
+// ============================================================
+
+async function demoWorkspace() {
+  console.log("\n=== workspace 示例 ===\n")
+
+  const bot = agent({
+    model: "deepseek/deepseek-chat",
+    role: "数据分析师",
+    tools: [],
+    steps: [
+      {
+        task: "分析以下数字列表，告诉我均值和中位数",
+        output: "JSON，包含 mean 和 median",
+        validate: (r) => {
+          try { JSON.parse(r); return true }
+          catch { return "输出不是合法 JSON" }
+        },
+      },
+      (ctx) => {
+        // 上一步是 JSON，从 workspace 读取结构化数据
+        const last = JSON.parse(ctx.lastResult as string)
+        ctx.workspace.set("stats", last)
+        console.log("已存入 workspace:", last)
+        return "数据已保存"
+      },
+      {
+        task: "基于之前分析的统计数据，再补充一个注释说明",
+        output: "一段中文注释",
+      },
+    ],
+  })
+
+  const result = await bot.run("分析：[10, 20, 30, 40, 50]")
+  console.log("最终输出:", result.output)
+}
+
+// ============================================================
 // 运行所有示例
 // ============================================================
 
 async function main() {
   await demoState()
   await demoPluginMutability()
-  // onAsk 需要交互，放最后
+  await demoWorkspace()
+  // demoOnAsk 需要交互输入，放最后，手动取消注释即可运行
   // await demoOnAsk()
 }
 
