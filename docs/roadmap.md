@@ -105,14 +105,14 @@
 - [x] **Agent 共享状态**：`AgentInstance` 增加 `state: Map<string, any>` 可读写的运行时状态
 - [x] **示例生态**：`pr-reviewer`（GitHub PR 自动审查）、`code-reviewer`（本地代码审查）、`translator`、`persistence` 等 13 个可运行示例，覆盖常用场景
 
-## V2.6 🚧 完善文档与生态
+## V2.6 ✅ 完善文档与生态
 
 > 2.5.1 发版后优先级：补全已有能力的使用文档，扩充 examples 覆盖常见场景
 
 - [x] **Retry + Timeout 文档**（`docs/guide/retry-and-timeout.md`）
-- [ ] **Streaming Events 完整示例**（`streamEvents: true` 接入 WebSocket / SSE）
-- [ ] **Fastify 服务端接入示例**（把 `agent` 跑在 HTTP server 上）
-- [ ] **`contextWindow` token 级滑窗**（从消息数改为按 token 数截断）
+- [x] **Streaming Events 完整示例**（`examples/streaming-sse.ts`，SSE 实时事件流）
+- [x] **Fastify 服务端接入示例**（`examples/server.ts`，REST + SSE 双接口）
+- [x] **`contextWindow` token 级滑窗**（`contextWindow.maxTokens`，字符/2 估算）
 
 ---
 
@@ -159,7 +159,7 @@
 - **`team({ lead })` 重建 lead** — lead 需要注入 delegate 工具，而工具列表是 agent 创建时固定的，复用原实例需要动态注入，引入更多复杂度
 - **`getConfig()` 非完整深拷贝** — tools/plugins 含函数引用和闭包状态，`structuredClone` 无法处理；顶层副本 + rules/steps 数组复制已覆盖 99% 误操作
 - **`resume()` 广播式恢复** — 同一 agent 多个 `wait` 挂起时，`resume()` 会全部恢复。per-run 精确恢复属于 V3.0 范畴
-- **`contextWindow.maxMessages` 是消息数滑窗** — 不是按 token 截断，也没有自动摘要策略；V2.6 计划升级为 token 级滑窗，届时此设计决策更新
+- **`contextWindow.maxMessages` 是消息数滑窗** — 另有 `maxTokens` 按 token 数滑动窗口，字符数/2 估算
 - **`maxCostPerRun` 是 token 总量上限** — 不是按真实模型价格计费，不包含 provider 级成本估算；如需真实计费可通过 plugin `afterModelCall` 自行统计
 - **`runStream() + steps` 是步骤级流式** — 能实时看到 `step_start/step_end`，但单步内部的模型输出仍为缓冲式；真逐 token 流式需重构 engine 与 loop 的交互方式
 

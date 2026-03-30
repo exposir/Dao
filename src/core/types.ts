@@ -241,8 +241,10 @@ export interface AgentOptions {
   fallbackModel?: string
   /** 上下文窗口配置（memory: true 时生效） */
   contextWindow?: {
-    /** 最多保留最近 N 条消息，超出的按先进先出丢弃 */
+    /** 最多保留最近 N 条消息，超出的按先进先出丢弃（与 maxTokens 二选一） */
     maxMessages?: number
+    /** 最多保留 N 个 token，超出的按先进先出丢弃（与 maxMessages 二选一） */
+    maxTokens?: number
     /** 裁剪策略，默认 "sliding"（滑动窗口） */
     strategy?: "sliding"
   }

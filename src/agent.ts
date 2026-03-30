@@ -85,12 +85,48 @@ export function agent(options: AgentOptions): AgentInstance {
   // 对话历史（memory 用）
   let messageHistory: ModelMessage[] = []
 
+  /**
+   * 估算消息内容的 token 数。
+   * 使用字符数 / 2 作为近似值（中文约 1-2 字/token，英文约 3-4 字/token）。
+   */
+  function countTokens(content: ModelMessage["content"]): number {
+    if (!content) return 0
+    if (typeof content === "string") return Math.ceil(content.length / 2)
+    return content.reduce((sum, part) => {
+      if (part.type === "text") return sum + Math.ceil(part.text.length / 2)
+      if (part.type === "image") return sum + 85
+      if (part.type === "file") return sum + 50
+      if (part.type === "tool-call") return sum + Math.ceil((part.toolName + JSON.stringify(part.input)).length / 2)
+      if (part.type === "tool-result") return sum + Math.ceil(JSON.stringify(part.output).length / 2)
+      return sum
+    }, 0)
+  }
+
   // 上下文窗口裁剪（memory + contextWindow 时生效）
   function trimHistory(): void {
     const cw = options.contextWindow
-    if (!cw?.maxMessages || messageHistory.length <= cw.maxMessages) return
-    // 滑动窗口：保留最近 maxMessages 条
-    messageHistory = messageHistory.slice(-cw.maxMessages)
+    if (!cw) return
+
+    if (cw.maxMessages && messageHistory.length > cw.maxMessages) {
+      // 消息数滑动窗口
+      messageHistory = messageHistory.slice(-cw.maxMessages)
+      return
+    }
+
+    if (cw.maxTokens) {
+      // token 级滑动窗口
+      const overhead = messageHistory[0]
+        ? countTokens(messageHistory[0].content) + 10 // system prompt 估算开销
+        : 0
+      let total = overhead
+      const keepFrom = messageHistory.findIndex((msg, i) => {
+        total += countTokens(msg.content) + 10 // 每条消息约 10 token 开销
+        return total >= cw.maxTokens!
+      })
+      if (keepFrom > 0) {
+        messageHistory = messageHistory.slice(keepFrom)
+      }
+    }
   }
 
   /** 将 MessageInput 转为存储在 memory 中的内容格式 */

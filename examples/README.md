@@ -128,3 +128,70 @@ REDIS_URL=redis://localhost:6379 npx tsx examples/persistence.ts
 ```bash
 npx tsx examples/v25-features.ts
 ```
+
+---
+
+### [streaming-sse.ts](streaming-sse.ts) — SSE 实时事件流
+
+通过 Server-Sent Events 实时接收 `step_start` / `text` / `step_end` / `done` 事件，服务端和客户端双端演示。
+
+```bash
+npx tsx examples/streaming-sse.ts
+```
+
+适合：终端 UI、实时日志、调试 Agent 运行过程。
+
+---
+
+### [server.ts](server.ts) — Fastify HTTP 服务端
+
+将 Agent 接入 Fastify，提供 `/api/chat`（同步）和 `/api/chat/stream`（SSE）两个接口。
+
+```bash
+npm install fastify @fastify/cors
+npx tsx examples/server.ts
+```
+
+适合：构建 API 服务、嵌入现有 Web 应用、部署到生产环境。
+
+---
+
+### [code-generator.ts](code-generator.ts) — 自然语言代码生成
+
+输入自然语言需求，Agent 自动生成 TypeScript 代码，写入文件并验证语法。内置 `listSrc` / `writeCode` / `checkSyntax` 工具链。
+
+```bash
+npx tsx examples/code-generator.ts
+# 或指定需求：
+npx tsx examples/code-generator.ts "写一个函数判断字符串是否是回文"
+```
+
+适合：快速原型生成、自动化脚手架、代码补全流水线。
+
+---
+
+### [db-query.ts](db-query.ts) — 自然语言 SQL 查询
+
+内置 SQLite 演示，零外部依赖。输入自然语言问题，Agent 自动生成 SQL、执行并解释结果。
+
+> 依赖：`npm install better-sqlite3 @types/better-sqlite3`
+
+```bash
+npx tsx examples/db-query.ts
+# 或指定问题：
+npx tsx examples/db-query.ts "哪些用户的订单总额超过 1000？"
+```
+
+适合：数据分析助手、BI 报表生成、数据库文档生成。
+
+---
+
+### [auto-test.ts](auto-test.ts) — 自动化测试生成
+
+读取源代码，分析函数逻辑，生成 Vitest 测试用例（覆盖正常路径、边界值、空输入、异常输入）。
+
+```bash
+npx tsx examples/auto-test.ts src/utils/median.ts
+```
+
+适合：测试驱动开发（TDD）、遗留代码补充测试、CI 流水线集成。

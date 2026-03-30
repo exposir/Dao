@@ -48,6 +48,8 @@ export default defineConfig({
           items: [
             { text: "Retry 与 Timeout", link: "/guide/retry-and-timeout" },
             { text: "团队协作", link: "/guide/team" },
+            { text: "SSE 事件流", link: "/examples/streaming-sse" },
+            { text: "Fastify 服务端", link: "/examples/server" },
             { text: "多模态输入", link: "/multimodal" },
             { text: "MCP 协议", link: "/mcp" },
           ],

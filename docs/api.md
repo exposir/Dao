@@ -123,8 +123,10 @@ interface AgentOptions {
 
   /** 上下文窗口配置 */
   contextWindow?: {
-    /** 最大消息数（滑动窗口） */
+    /** 最大消息数（滑动窗口），与 maxTokens 二选一 */
     maxMessages?: number
+    /** 最大 token 数（滑动窗口），与 maxMessages 二选一，字符数/2 估算 */
+    maxTokens?: number
   }
 
   /** 单次执行的最大 token 数，超限抛 CostLimitError */
