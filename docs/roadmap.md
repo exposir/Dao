@@ -103,7 +103,7 @@
 - [x] **StepContext.workspace**：`StepContext` 增加 `workspace: Map<string, any>`，步骤间通过 key-value 共享结构化数据
 - [x] **Mid-run Clarification**：Agent Loop 内置 `ask` 工具，运行中可主动暂停向用户提问
 - [x] **Agent 共享状态**：`AgentInstance` 增加 `state: Map<string, any>` 可读写的运行时状态
-- [x] **示例生态**：`pr-reviewer`（GitHub PR 自动审查）、`code-reviewer`（本地代码审查）、`translator`、`persistence` 等 13 个可运行示例，覆盖常用场景
+- [x] **示例生态**：`pr-reviewer`（GitHub PR 自动审查）、`code-reviewer`（本地代码审查）、`translator`、`persistence` 等 8 个核心可运行示例，覆盖常用场景
 
 ## V2.6 ✅ 完善文档与生态
 
@@ -113,6 +113,49 @@
 - [x] **Streaming Events 完整示例**（`examples/streaming-sse.ts`，SSE 实时事件流）
 - [x] **Fastify 服务端接入示例**（`examples/server.ts`，REST + SSE 双接口）
 - [x] **`contextWindow` token 级滑窗**（`contextWindow.maxTokens`，字符/2 估算）
+
+## V2.6.1 ✅ 示例生态扩充
+
+> 13+ 可运行示例，覆盖代码生成、测试、翻译、数据库查询等实用场景
+
+- [x] **pr-reviewer**（`examples/pr-reviewer.ts`）— GitHub PR 自动审查，fetchPRDetails / fetchFileDiff 工具，支持私有仓库
+- [x] **code-reviewer**（`examples/code-reviewer.ts`）— 本地代码审查，支持增量/全量模式
+- [x] **code-generator**（`examples/code-generator.ts`）— 自然语言代码生成，listSrc / writeCode / checkSyntax 工具
+- [x] **auto-test**（`examples/auto-test.ts`）— AI 自动化测试生成（Vitest），支持递归、dry-run、自动运行测试
+- [x] **db-query**（`examples/db-query.ts`）— 自然语言 SQL 查询，内置 SQLite 内存数据库演示
+- [x] **translator**（`examples/translator.ts`）— 多语言翻译，memory 多轮 + 单次 + batch 模式
+- [x] **generate**（`examples/generate.ts`）— `generate()` 结构化输出完整演示，支持 CLI 参数（`--extract` / `--classify` / `--code-review`）
+- [x] **i18n**（`examples/i18n.ts`）— 框架国际化能力演示（`setLocale` / `t()` / `getLocale()` + 框架错误信息中英文）
+
+## V2.6.2 ✅ CLI 脚手架
+
+> `create-dao-app`，一行命令创建基于 Dao 的 AI 助手项目
+
+- [x] **npm 包发布** — `npm install -g create-dao-app` 或 `npx create-dao-app`
+- [x] **交互式创建** — 问答式配置（项目名、角色、目标、模型、工具），无需记忆参数
+- [x] **零依赖 CLI** — 纯 Node.js 内置模块，无外部依赖
+- [x] **渐进式模板** — 生成的代码展示 `chat()` → `tools` → `rules` → `memory` → `team()` 的演进路径
+- [x] **美观 REPL** — 纯 ANSI 颜色化输出，内置命令（`exit` / `clear` / `token` / `reset`）
+- [x] **命令行参数** — `--name` / `--role` / `--goal` / `--model` / `--tools` / `--no-install` 非交互模式
+
+## V2.6.3 ✅ 新增 API
+
+> `generate()` + `mockModel()` + `team.getMembers()` + strategy `auto`
+
+- [x] **`generate()`** — 结构化输出完整方法，支持 JSON Schema 约束，4 个完整演示场景（信息提取、情感分类、代码审查评分、API 参数生成）
+- [x] **`mockModel()`**（`src/mock.ts`）— 测试辅助，创建模拟模型，支持循环/非循环模式，完全兼容 AI SDK v3 协议
+- [x] **`team.getMembers()`** — 运行时获取团队成员及其配置信息
+- [x] **team `strategy: "auto"`** — 自动判断使用顺序委派或并行委派
+
+## V2.6.4 ✅ 新增内置能力
+
+> V2.5 遗漏或新增的内置能力补充文档
+
+- [x] **`agent.state: Map<string, any>`** — 跨 run 共享运行时状态，`examples/v25-features.ts` 完整演示
+- [x] **`onAsk`** — Agent 运行中主动向用户提问，`examples/v25-features.ts` 演示
+- [x] **`telemetryPlugin()`**（`src/telemetry.ts`）— OpenTelemetry 集成插件，支持 input / model_call / model_response / complete / error 全链路 span
+- [x] **`HookContext.systemPrompt` / `HookContext.messages` 可写引用** — Plugin 可变性，`beforeModelCall` 可修改 system prompt 和消息历史
+- [x] **`StepContext.workspace: Map<string, any>`** — 步骤间传递结构化数据，`examples/v25-features.ts` 演示
 
 ---
 
@@ -124,6 +167,11 @@
 - **逐 token 流式**：重构 engine 与 loop 交互，真·流式输出到单步内部
 - **per-run 精确恢复**：`resume()` 从广播式改为 run 级别精确控制
 - **沙箱 / 工具隔离**：安全执行不可信工具（非优先级，看用户场景）
+- **DAG 流程引擎**：steps 从线性/并行升级为有向无环图，支持依赖拓扑排序
+- **多租户 Agent Pool**：agent 资源池化管理，支持并发数和内存限制
+- **Agent 镜像 / 版本化**：保存/回滚 agent 配置快照，支持 A/B 测试不同 prompt 版本
+- **Structured Output 校验层**：将 `generate()` 的 schema 校验从 best-effort 升级为强保证（失败自动重试 + maxAttempts）
+- **MCP 原生集成**：不只是桥接 MCP tools，还支持 MCP resources / prompts / sampling
 
 |
 
@@ -137,6 +185,9 @@
 | **无状态持久化** | 轻量定位，持久化方式因场景差异大 | `examples/persistence.ts` 提供文件 / Redis 两种方案 |
 | **无批量任务工具** | 循环 + 并发是语言基础能力 | `examples/batch.ts` 提供带重试的并发批量示例 |
 | **无 token 级流式** | 单步内缓冲式执行是设计取舍 | V2.5 步骤级流式已可用（`runStream()`），真逐 token 流式属 V3.x 范畴 |
+| **无自动测试生成** | 不内置，端到端测试场景差异大 | `examples/auto-test.ts` 提供基于 Vitest 的 AI 测试生成方案 |
+| **无自然语言 SQL 查询** | 数据库类型多样，不预设连接方式 | `examples/db-query.ts` 提供 SQLite 内存数据库 + 自然语言查询完整方案 |
+| **无 PR 自动审查** | 需要 GitHub API 集成，不适合框架内置 | `examples/pr-reviewer.ts` 提供完整 GitHub PR 审查方案 |
 
 ---
 

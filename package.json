@@ -27,7 +27,11 @@
     "typecheck": "tsc -p tsconfig.check.json --noEmit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "create-dao-app": "node create-dao-app/index.cjs"
+  },
+  "bin": {
+    "create-dao-app": "./create-dao-app/index.cjs"
   },
   "keywords": [
     "ai",
